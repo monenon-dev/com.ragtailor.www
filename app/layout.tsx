@@ -3,31 +3,22 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
-}
+  // 브라우저 탭에 표시될 타이틀입니다.
+  title: 'Monenon | AI Agent Orchestration', 
+  description: 'Advanced AI Agent Orchestration Platform for Developers',
+  generator: 'Monenon Labs',
+};
 
 export default function RootLayout({
   children,
@@ -35,8 +26,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    // 1. lang을 "ko"에서 "en"으로 변경 (영문 서비스 기준)
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.className} antialiased bg-white dark:bg-gray-950`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
