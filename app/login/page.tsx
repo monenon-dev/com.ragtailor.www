@@ -1,20 +1,32 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { formatApiError } from "@/lib/format-api-error";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "1") {
+      setSuccessMessage("회원가입이 완료되었습니다. 로그인해 주세요.");
+    }
+    const prefillEmail = searchParams.get("email");
+    if (prefillEmail) {
+      setEmail(decodeURIComponent(prefillEmail));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,6 +46,15 @@ export default function LoginPage() {
       const token = data.access_token;
       if (typeof token === "string") {
         sessionStorage.setItem("access_token", token);
+      }
+      if (typeof data.nickname === "string") {
+        sessionStorage.setItem("user_nickname", data.nickname);
+      }
+      if (typeof data.role === "string") {
+        sessionStorage.setItem("user_role", data.role);
+      }
+      if (typeof data.user_id === "number") {
+        sessionStorage.setItem("user_id", String(data.user_id));
       }
       router.push("/");
       router.refresh();
@@ -58,6 +79,11 @@ export default function LoginPage() {
           onSubmit={handleSubmit}
           className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm"
         >
+          {successMessage && (
+            <p className="text-sm text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg px-3 py-2">
+              {successMessage}
+            </p>
+          )}
           {error && (
             <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
               {error}

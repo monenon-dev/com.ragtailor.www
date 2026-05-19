@@ -7,10 +7,11 @@ import { Loader2 } from "lucide-react";
 
 import { formatApiError } from "@/lib/format-api-error";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,28 +25,44 @@ export default function SignupPage() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    if (password.length < 8) {
-      setError("비밀번호는 8자 이상이어야 합니다.");
+    if (password.length < 4) {
+      setError("비밀번호는 4자 이상이어야 합니다.");
       return;
     }
+
+    const trimmedNickname = nickname.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedNickname) {
+      setError("닉네임을 입력하세요.");
+      return;
+    }
+    alert(
+      [
+        `닉네임: ${trimmedNickname}`,
+        `이메일: ${trimmedEmail}`,
+        `비밀번호: ${password}`,
+        `비밀번호 확인: ${confirmPassword}`,
+      ].join("\n")
+    );
+
     setIsLoading(true);
     try {
       const res = await fetch(`${apiBaseUrl}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({
+          nickname: trimmedNickname,
+          email: trimmedEmail,
+          password,
+        }),
       });
       const data: Record<string, unknown> = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(formatApiError(data, "회원가입에 실패했습니다."));
         return;
       }
-      const token = data.access_token;
-      if (typeof token === "string") {
-        sessionStorage.setItem("access_token", token);
-      }
-      router.push("/");
-      router.refresh();
+      const emailParam = encodeURIComponent(trimmedEmail);
+      router.push(`/login?registered=1&email=${emailParam}`);
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -72,6 +89,23 @@ export default function SignupPage() {
               {error}
             </p>
           )}
+
+          <div>
+            <label htmlFor="signup-nickname" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              닉네임
+            </label>
+            <input
+              id="signup-nickname"
+              type="text"
+              autoComplete="nickname"
+              required
+              maxLength={32}
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
+              placeholder="표시 이름"
+            />
+          </div>
 
           <div>
             <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -102,7 +136,7 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">8자 이상</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">4자 이상</p>
           </div>
 
           <div>

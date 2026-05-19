@@ -39,9 +39,15 @@ export interface GeminiChatPanelProps {
   emptyTitle?: string;
   emptySubtitle?: string;
   className?: string;
+  /** 외부에서 대화 기록을 주입할 때 (대화방 선택 등) */
+  initialMessages?: GeminiChatMessage[];
+  /** 지정 시 기본 fetch 대신 이 핸들러로 전송·응답 처리 */
+  onSendMessage?: (text: string) => Promise<GeminiChatMessage>;
+  /** initialMessages / session 변경 시 패널 리셋용 */
+  resetKey?: string | number;
 }
 
-const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 function isAgentChatPath(path: string) {
   return path.replace(/\/$/, "").endsWith("/agent/chat");
@@ -89,20 +95,31 @@ export function GeminiChatPanel({
   emptyTitle: _emptyTitle = "Gemini와 대화를 시작하세요",
   emptySubtitle: _emptySubtitle = "백엔드 POST /chat 이 연결되어 있으면 응답이 표시됩니다.",
   className = "",
+  initialMessages,
+  onSendMessage,
+  resetKey,
 }: GeminiChatPanelProps) {
-  const [messages, setMessages] = useState<GeminiChatMessage[]>([]);
+  const [messages, setMessages] = useState<GeminiChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    setMessages(initialMessages ?? []);
+    setErrorMessage(null);
+  }, [resetKey, initialMessages]);
 
   const sendQuestion = async (question: string) => {
     const trimmed = question.trim();
@@ -120,31 +137,37 @@ export function GeminiChatPanel({
     setErrorMessage(null);
 
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${chatPath}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: buildRequestBody(chatPath, trimmed),
-      });
+      let assistantMessage: GeminiChatMessage;
 
-      const raw: unknown = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const detail =
-          typeof raw === "object" && raw !== null && "detail" in raw && typeof (raw as { detail: unknown }).detail === "string"
-            ? (raw as { detail: string }).detail
-            : `요청 실패 (${res.status})`;
-        throw new Error(detail);
+      if (onSendMessage) {
+        assistantMessage = await onSendMessage(trimmed);
+      } else {
+        const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${chatPath}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: buildRequestBody(chatPath, trimmed),
+        });
+
+        const raw: unknown = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail =
+            typeof raw === "object" && raw !== null && "detail" in raw && typeof (raw as { detail: unknown }).detail === "string"
+              ? (raw as { detail: string }).detail
+              : `요청 실패 (${res.status})`;
+          throw new Error(detail);
+        }
+
+        const parsed = parseAssistantReply(chatPath, raw);
+
+        assistantMessage = {
+          role: "assistant",
+          text: parsed.text,
+          ts: new Date().toISOString(),
+          model: parsed.model,
+          confidence: parsed.confidence,
+          sources: parsed.sources,
+        };
       }
-
-      const parsed = parseAssistantReply(chatPath, raw);
-
-      const assistantMessage: GeminiChatMessage = {
-        role: "assistant",
-        text: parsed.text,
-        ts: new Date().toISOString(),
-        model: parsed.model,
-        confidence: parsed.confidence,
-        sources: parsed.sources,
-      };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
@@ -170,12 +193,15 @@ export function GeminiChatPanel({
     (c: number | undefined) =>
       `${(typeof c === "number" && c <= 1 ? c * 100 : Number(c ?? 0)).toFixed(1)}%`;
 
-  const hasThread = messages.length > 0 || isLoading || Boolean(errorMessage);
-
   return (
-    <div className={`flex flex-col flex-1 min-h-0 gap-3 ${className}`}>
-      {hasThread ? (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 px-4 sm:px-6 py-4">
+    <div className={`flex h-full min-h-0 flex-col overflow-hidden gap-3 ${className}`}>
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 px-4 sm:px-6 py-4"
+      >
+          {messages.length === 0 && !isLoading && !errorMessage && (
+            <p className="text-center text-sm text-gray-400 py-8">메시지를 입력해 대화를 시작하세요.</p>
+          )}
           {messages.map((msg, idx) => (
             <div
               key={`${msg.role}-${msg.ts}-${idx}`}
@@ -210,14 +236,7 @@ export function GeminiChatPanel({
               {errorMessage}
             </p>
           )}
-          <div ref={messagesEndRef} />
-        </div>
-      ) : (
-        <div
-          className="flex-1 min-h-10 max-h-[min(20vh,7rem)] w-full shrink basis-0"
-          aria-hidden
-        />
-      )}
+      </div>
 
       <form onSubmit={handleSubmit} className="w-full shrink-0 pr-1">
         <div className="rounded-[1.75rem] border border-gray-200/95 bg-[#f4f6f8] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-700 dark:bg-gray-900/95 dark:shadow-none overflow-hidden">
