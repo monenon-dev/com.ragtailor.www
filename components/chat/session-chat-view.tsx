@@ -1,21 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-import { ChatSessionSidebar } from "@/components/chat-session-sidebar";
+import { ChatSessionSidebar } from "@/components/chat/chat-session-sidebar";
 import {
   GeminiChatPanel,
   type GeminiChatMessage,
-} from "@/components/gemini-chat-panel";
+} from "@/components/chat/gemini-chat-panel";
 import {
   createChatSession,
+  deleteChatSessions,
   fetchChatSessions,
   fetchSessionMessages,
   saveSessionMessage,
   updateChatSessionTitle,
   type ChatSessionItem,
 } from "@/lib/chat-sessions";
+import { releaseStarterSend, tryAcquireStarterSend } from "@/lib/chat-starter-lock";
 
 interface SessionChatViewProps {
   apiBaseUrl: string;
@@ -40,8 +42,31 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [pendingStarter, setPendingStarter] = useState<string | null>(null);
+  const sessionCreateLock = useRef<Promise<number> | null>(null);
+
+  useEffect(() => {
+    const prompt = sessionStorage.getItem("chat_starter_prompt");
+    if (!prompt) return;
+
+    const nonce = sessionStorage.getItem("chat_starter_nonce");
+    if (nonce) {
+      const handled = sessionStorage.getItem("chat_starter_handled_nonce");
+      if (handled === nonce) {
+        sessionStorage.removeItem("chat_starter_prompt");
+        sessionStorage.removeItem("chat_starter_nonce");
+        return;
+      }
+      sessionStorage.setItem("chat_starter_handled_nonce", nonce);
+    }
+
+    sessionStorage.removeItem("chat_starter_prompt");
+    sessionStorage.removeItem("chat_starter_nonce");
+    setPendingStarter(prompt);
+  }, []);
 
   const loadSessions = useCallback(async () => {
     if (!userId) return;
@@ -116,6 +141,31 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
     setEditTitle("");
   };
 
+  const handleDeleteSessions = async (sessionIds: number[]) => {
+    if (!userId || sessionIds.length === 0) return;
+    setDeleting(true);
+    try {
+      await deleteChatSessions(sessionIds, userId, apiBaseUrl);
+      const list = await fetchChatSessions(userId, apiBaseUrl);
+      setSessions(list);
+      setActiveId((prev) => {
+        if (prev !== null && list.some((s) => s.id === prev)) return prev;
+        return list.length > 0 ? list[0].id : null;
+      });
+      if (activeId !== null && sessionIds.includes(activeId)) {
+        setHistory([]);
+      }
+      if (editingSessionId !== null && sessionIds.includes(editingSessionId)) {
+        handleCancelEdit();
+      }
+    } catch (err) {
+      console.error(err);
+      window.alert(err instanceof Error ? err.message : "대화방 삭제에 실패했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSaveTitle = async (sessionId: number) => {
     if (!userId) return;
     const trimmed = editTitle.trim() || "새 대화";
@@ -137,19 +187,34 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
   };
 
   const handleSendMessage = useCallback(
-    async (text: string): Promise<GeminiChatMessage> => {
+    async (
+      text: string,
+      options?: { forceNewSession?: boolean }
+    ): Promise<GeminiChatMessage> => {
       if (!userId) {
         throw new Error("로그인이 필요합니다.");
       }
 
-      let sessionId = activeId;
+      let sessionId = options?.forceNewSession ? null : activeId;
+
       if (sessionId === null) {
-        const created = await createChatSession(userId, text.slice(0, 40) || "새 대화", apiBaseUrl);
-        sessionId = created.id;
-        setActiveId(created.id);
-        setSessions((prev) => [created, ...prev]);
-        setEditingSessionId(created.id);
-        setEditTitle(created.title);
+        if (!sessionCreateLock.current) {
+          sessionCreateLock.current = (async () => {
+            const created = await createChatSession(
+              userId,
+              text.slice(0, 40) || "새 대화",
+              apiBaseUrl
+            );
+            setActiveId(created.id);
+            setSessions((prev) => [created, ...prev]);
+            setEditingSessionId(created.id);
+            setEditTitle(created.title);
+            return created.id;
+          })().finally(() => {
+            sessionCreateLock.current = null;
+          });
+        }
+        sessionId = await sessionCreateLock.current;
       }
 
       await saveSessionMessage(sessionId, userId, "user", text, apiBaseUrl);
@@ -178,6 +243,9 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
 
       await saveSessionMessage(sessionId, userId, "assistant", reply, apiBaseUrl);
 
+      const rows = await fetchSessionMessages(sessionId, userId, apiBaseUrl);
+      setHistory(toGeminiMessages(rows));
+
       const updated = await fetchChatSessions(userId, apiBaseUrl);
       setSessions(updated);
 
@@ -190,6 +258,23 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
     },
     [activeId, userId, apiBaseUrl]
   );
+
+  useEffect(() => {
+    if (!pendingStarter || !userId || loadingSessions) return;
+    if (!tryAcquireStarterSend(pendingStarter)) return;
+
+    const prompt = pendingStarter;
+    (async () => {
+      try {
+        await handleSendMessage(prompt, { forceNewSession: true });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        releaseStarterSend(prompt);
+        setPendingStarter(null);
+      }
+    })();
+  }, [pendingStarter, userId, loadingSessions, handleSendMessage]);
 
   const initialMessages = useMemo(() => history, [history]);
 
@@ -216,6 +301,8 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
         activeId={activeId}
         loading={loadingSessions}
         creating={creating}
+        deleting={deleting}
+        onDeleteSessions={handleDeleteSessions}
         editingSessionId={editingSessionId}
         editTitle={editTitle}
         onSelect={(id) => {
@@ -233,7 +320,9 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
         className="max-h-[min(20vh,8.5rem)] sm:max-h-[min(24vh,10rem)] lg:max-h-none"
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {loadingMessages && activeId !== null ? (
+        {pendingStarter ? (
+          <p className="text-sm text-gray-500 py-8 text-center">답변 생성 중…</p>
+        ) : loadingMessages && activeId !== null ? (
           <p className="text-sm text-gray-500 py-8 text-center">대화 불러오는 중…</p>
         ) : (
           <GeminiChatPanel
@@ -241,7 +330,7 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
             apiBaseUrl={apiBaseUrl}
             initialMessages={initialMessages}
             resetKey={activeId ?? "new"}
-            onSendMessage={handleSendMessage}
+            onSendMessage={(text) => handleSendMessage(text)}
             placeholder="질문하세요 (예: 서울 날씨 어때?, 한국의 수도는?)"
           />
         )}

@@ -207,7 +207,6 @@ export function PlatformSidebarLayout({
           >
             Monenon AI
           </Link>
-          <span className="hidden sm:inline text-sm text-gray-500">DB Platform</span>
           <div className="ml-auto flex items-center gap-2">{headerActions}</div>
         </header>
 

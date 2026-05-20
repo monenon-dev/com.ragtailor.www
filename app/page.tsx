@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { RefreshCw, Terminal, Bot, Menu, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { RefreshCw, Terminal, Bot, Menu, X, Shirt, Egg, Coffee, type LucideIcon } from "lucide-react";
 
-import { HomeSidebar } from "@/components/home-sidebar";
-import { WeatherWidget } from "@/components/weather-widget";
+import { HomeSidebar } from "@/components/layout/home-sidebar";
+import { WeatherWidget } from "@/components/weather/weather-widget";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -15,10 +16,23 @@ interface AgentLogItem {
 
 type AuthUser = { nickname: string; role: string };
 
+const RECOMMENDED_TAGS: { label: string; prompt: string; icon: LucideIcon }[] = [
+  { label: "오늘 옷차림 추천", prompt: "오늘 날씨에 맞는 옷차림을 추천해줘", icon: Shirt },
+  { label: "냉장고 파먹기", prompt: "냉장고에 있는 재료로 만들 수 있는 요리를 추천해줘", icon: Egg },
+  { label: "오늘의 한마디", prompt: "오늘 날씨에 맞는 한마디를 해줘", icon: Coffee },
+];
+
 export default function MonenonAiApp() {
+  const router = useRouter();
   const [showLogs, setShowLogs] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+  const handleRecommendedTag = (prompt: string) => {
+    sessionStorage.setItem("chat_starter_prompt", prompt);
+    sessionStorage.setItem("chat_starter_nonce", crypto.randomUUID());
+    router.push("/chats");
+  };
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -106,16 +120,12 @@ export default function MonenonAiApp() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
               <div className="min-w-0 flex-1 max-w-3xl">
-                <h1 className="font-bold text-gray-900 dark:text-white leading-tight tracking-tight text-[clamp(0.95rem,2.2vw+0.45rem,3rem)] sm:text-[clamp(1.1rem,2vw+0.65rem,3.15rem)] sm:whitespace-nowrap">
-                  개발자를 위한{" "}
-                  <span className="text-indigo-600 dark:text-indigo-400">Agent Orchestration</span>
+                <h1 className="font-bold text-gray-900 dark:text-white leading-tight tracking-tight text-[clamp(1.25rem,2.2vw+0.45rem,3rem)] sm:text-[clamp(1.5rem,2vw+0.65rem,3.15rem)]">
+                  나만의{" "}
+                  <span className="text-indigo-600 dark:text-indigo-400">일상 메이트</span>
                 </h1>
-                <p className="mt-3 text-base sm:text-lg text-gray-600 dark:text-gray-400 font-mono">
-                  Orchestrating Intelligence for Developers
-                </p>
                 <p className="mt-3 text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-                  명령을 입력하면 Monenon AI가 도구 사용과 추론을 수행합니다. 실행 로그로 과정을 추적할 수 있습니다.
-                  대화는 메뉴의 Agent Chat 또는 대화방에서 이어갈 수 있습니다.
+                  명령하지 않아도 내 상황을 먼저 이해하는 똑똑한 AI와 대화해 보세요.
                 </p>
               </div>
               <WeatherWidget
@@ -125,27 +135,42 @@ export default function MonenonAiApp() {
               />
             </div>
 
-            <nav className="mt-6 sm:mt-8 flex flex-wrap gap-3" aria-label="보기 전환">
-              <Link
-                href="/chats"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-indigo-600 bg-indigo-600 text-white text-sm font-medium shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
-              >
-                <Bot size={18} />
-                <span>Agent Chat</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowLogs((v) => !v)}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-                  showLogs
-                    ? "border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 hover:border-indigo-300 dark:hover:border-indigo-800"
-                }`}
-              >
-                <Terminal size={18} />
-                <span>Execution Logs</span>
-              </button>
-            </nav>
+            <div className="mt-6 sm:mt-8" aria-label="보기 전환">
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/chats"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-indigo-600 bg-indigo-600 text-white text-sm font-medium shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
+                >
+                  <Bot size={18} />
+                  <span>Agent Chat</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowLogs((v) => !v)}
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+                    showLogs
+                      ? "border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                      : "border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 hover:border-indigo-300 dark:hover:border-indigo-800"
+                  }`}
+                >
+                  <Terminal size={18} />
+                  <span>Execution Logs</span>
+                </button>
+              </div>
+              <div className="mt-[1cm] flex flex-wrap gap-1.5" aria-label="추천 태그">
+                  {RECOMMENDED_TAGS.map(({ label, prompt, icon: Icon }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => handleRecommendedTag(prompt)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-transparent bg-indigo-50/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:border-indigo-500 hover:bg-indigo-100/90 dark:bg-indigo-950/50 dark:text-gray-200 dark:hover:border-indigo-400 dark:hover:bg-indigo-950/80"
+                    >
+                      <Icon size={14} className="shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
         </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent, FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, KeyboardEvent, FormEvent } from "react";
 import {
   ChevronDown,
   Loader2,
@@ -45,6 +45,12 @@ export interface GeminiChatPanelProps {
   onSendMessage?: (text: string) => Promise<GeminiChatMessage>;
   /** initialMessages / session 변경 시 패널 리셋용 */
   resetKey?: string | number;
+  /** 입력창에 미리 채울 문구 (추천 태그 등) */
+  initialInput?: string;
+  /** true면 initialInput을 입력창에만 넣지 않고 즉시 전송 */
+  autoSendInitialInput?: boolean;
+  /** autoSendInitialInput 전송 시작 후 호출 (부모 state 정리용) */
+  onInitialInputHandled?: () => void;
 }
 
 const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -98,12 +104,16 @@ export function GeminiChatPanel({
   initialMessages,
   onSendMessage,
   resetKey,
+  initialInput,
+  autoSendInitialInput = false,
+  onInitialInputHandled,
 }: GeminiChatPanelProps) {
   const [messages, setMessages] = useState<GeminiChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const sentInitialRef = useRef<{ resetKey: string | number | undefined; prompt: string } | null>(null);
 
   const scrollToBottom = () => {
     const el = messagesContainerRef.current;
@@ -119,9 +129,11 @@ export function GeminiChatPanel({
   useEffect(() => {
     setMessages(initialMessages ?? []);
     setErrorMessage(null);
+    setInput("");
+    sentInitialRef.current = null;
   }, [resetKey, initialMessages]);
 
-  const sendQuestion = async (question: string) => {
+  const sendQuestion = useCallback(async (question: string) => {
     const trimmed = question.trim();
     if (!trimmed) return;
 
@@ -175,7 +187,28 @@ export function GeminiChatPanel({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiBaseUrl, chatPath, onSendMessage]);
+
+  useEffect(() => {
+    const trimmed = initialInput?.trim();
+    if (!trimmed) return;
+
+    if (!autoSendInitialInput) {
+      setInput(trimmed);
+      return;
+    }
+
+    const key = resetKey ?? "default";
+    if (
+      sentInitialRef.current?.resetKey === key &&
+      sentInitialRef.current?.prompt === trimmed
+    ) {
+      return;
+    }
+    sentInitialRef.current = { resetKey: key, prompt: trimmed };
+    onInitialInputHandled?.();
+    void sendQuestion(trimmed);
+  }, [initialInput, autoSendInitialInput, resetKey, onInitialInputHandled, sendQuestion]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

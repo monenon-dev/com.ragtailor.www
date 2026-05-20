@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 
-import { PLATFORM_NAV } from "@/components/platform-sidebar-layout";
+import { PLATFORM_NAV } from "@/components/layout/platform-sidebar-layout";
 
 interface HomeSidebarProps {
   open: boolean;

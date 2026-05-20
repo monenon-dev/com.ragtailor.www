@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-import { HomeSidebar } from "@/components/home-sidebar";
-import { SessionChatView } from "@/components/session-chat-view";
+import { HomeSidebar } from "@/components/layout/home-sidebar";
+import { SessionChatView } from "@/components/chat/session-chat-view";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 

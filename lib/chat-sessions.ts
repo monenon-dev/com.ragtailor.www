@@ -74,6 +74,38 @@ export async function fetchSessionMessages(
   return res.json();
 }
 
+export async function deleteChatSession(
+  sessionId: number,
+  userId: number,
+  apiBaseUrl?: string
+): Promise<void> {
+  const res = await fetch(
+    `${base(apiBaseUrl)}/platform/chat-sessions/${sessionId}?user_id=${userId}`,
+    { method: "DELETE" }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 삭제 실패");
+  }
+}
+
+export async function deleteChatSessions(
+  sessionIds: number[],
+  userId: number,
+  apiBaseUrl?: string
+): Promise<number[]> {
+  const res = await fetch(`${base(apiBaseUrl)}/platform/chat-sessions/bulk-delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, session_ids: sessionIds }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 삭제 실패");
+  }
+  return Array.isArray(data.deleted_ids) ? (data.deleted_ids as number[]) : sessionIds;
+}
+
 export async function updateChatSessionTitle(
   sessionId: number,
   userId: number,
