@@ -10,6 +10,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+import { formatMessageTime } from "@/lib/chat-sessions";
+
 export interface GeminiChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -39,7 +41,7 @@ export interface GeminiChatPanelProps {
   emptyTitle?: string;
   emptySubtitle?: string;
   className?: string;
-  /** 외부에서 대화 기록을 주입할 때 (대화방 선택 등) */
+  /** 외부에서 대화 기록을 주입할 때 (채팅방 선택 등) */
   initialMessages?: GeminiChatMessage[];
   /** 지정 시 기본 fetch 대신 이 핸들러로 전송·응답 처리 */
   onSendMessage?: (text: string) => Promise<GeminiChatMessage>;
@@ -51,9 +53,16 @@ export interface GeminiChatPanelProps {
   autoSendInitialInput?: boolean;
   /** autoSendInitialInput 전송 시작 후 호출 (부모 state 정리용) */
   onInitialInputHandled?: () => void;
+  /** 자동 전송 중복 방지용 (resetKey와 분리) */
+  starterDedupeKey?: string;
+  /** 부모가 DB에서 메시지 로드 완료 시 증가 — resetKey와 별도로 initialMessages 반영 */
+  messagesEpoch?: number;
 }
 
 const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+/** React Strict Mode remount 시 starter 자동 전송 중복 방지 */
+const sentStarterKeys = new Set<string>();
 
 function isAgentChatPath(path: string) {
   return path.replace(/\/$/, "").endsWith("/agent/chat");
@@ -107,6 +116,8 @@ export function GeminiChatPanel({
   initialInput,
   autoSendInitialInput = false,
   onInitialInputHandled,
+  starterDedupeKey,
+  messagesEpoch = 0,
 }: GeminiChatPanelProps) {
   const [messages, setMessages] = useState<GeminiChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
@@ -126,12 +137,25 @@ export function GeminiChatPanel({
     scrollToBottom();
   }, [messages]);
 
+  const prevResetKeyRef = useRef(resetKey);
+
   useEffect(() => {
+    if (prevResetKeyRef.current === resetKey) return;
+    prevResetKeyRef.current = resetKey;
     setMessages(initialMessages ?? []);
     setErrorMessage(null);
     setInput("");
     sentInitialRef.current = null;
   }, [resetKey, initialMessages]);
+
+  const prevMessagesEpochRef = useRef(messagesEpoch);
+
+  useEffect(() => {
+    if (prevMessagesEpochRef.current === messagesEpoch) return;
+    prevMessagesEpochRef.current = messagesEpoch;
+    if (prevResetKeyRef.current !== resetKey) return;
+    setMessages(initialMessages ?? []);
+  }, [messagesEpoch, initialMessages, resetKey]);
 
   const sendQuestion = useCallback(async (question: string) => {
     const trimmed = question.trim();
@@ -198,17 +222,19 @@ export function GeminiChatPanel({
       return;
     }
 
-    const key = resetKey ?? "default";
-    if (
-      sentInitialRef.current?.resetKey === key &&
-      sentInitialRef.current?.prompt === trimmed
-    ) {
-      return;
-    }
-    sentInitialRef.current = { resetKey: key, prompt: trimmed };
-    onInitialInputHandled?.();
-    void sendQuestion(trimmed);
-  }, [initialInput, autoSendInitialInput, resetKey, onInitialInputHandled, sendQuestion]);
+    const dedupeKey = `${starterDedupeKey ?? resetKey ?? "default"}::${trimmed}`;
+    if (sentStarterKeys.has(dedupeKey)) return;
+
+    sentStarterKeys.add(dedupeKey);
+    sentInitialRef.current = { resetKey: resetKey ?? "default", prompt: trimmed };
+    void (async () => {
+      try {
+        await sendQuestion(trimmed);
+      } finally {
+        onInitialInputHandled?.();
+      }
+    })();
+  }, [initialInput, autoSendInitialInput, resetKey, starterDedupeKey, onInitialInputHandled, sendQuestion]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -235,14 +261,23 @@ export function GeminiChatPanel({
           {messages.length === 0 && !isLoading && !errorMessage && (
             <p className="text-center text-sm text-gray-400 py-8">메시지를 입력해 대화를 시작하세요.</p>
           )}
-          {messages.map((msg, idx) => (
+          {messages.map((msg, idx) => {
+            const isUser = msg.role === "user";
+            const timeLabel = msg.ts ? formatMessageTime(msg.ts) : null;
+
+            return (
             <div
               key={`${msg.role}-${msg.ts}-${idx}`}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex items-end gap-1.5 ${isUser ? "justify-end" : "justify-start"}`}
             >
+              {isUser && timeLabel && (
+                <span className="shrink-0 pb-1 text-[11px] tabular-nums text-gray-400 dark:text-gray-500">
+                  {timeLabel}
+                </span>
+              )}
               <div
                 className={`max-w-[min(100%,42rem)] sm:max-w-[85%] rounded-2xl px-4 py-3 ${
-                  msg.role === "user"
+                  isUser
                     ? "bg-indigo-600 text-white"
                     : "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
                 }`}
@@ -261,8 +296,14 @@ export function GeminiChatPanel({
                   </div>
                 )}
               </div>
+              {!isUser && timeLabel && (
+                <span className="shrink-0 pb-1 text-[11px] tabular-nums text-gray-400 dark:text-gray-500">
+                  {timeLabel}
+                </span>
+              )}
             </div>
-          ))}
+            );
+          })}
           {isLoading && <Loader2 className="animate-spin text-indigo-500 mx-auto" aria-label="응답 대기 중" />}
           {errorMessage && (
             <p className="text-center text-sm text-red-600 dark:text-red-400 px-2" role="alert">

@@ -6,7 +6,6 @@ import {
   Terminal,
   LayoutDashboard,
   Database,
-  X,
 } from "lucide-react";
 
 import { PLATFORM_NAV } from "@/components/layout/platform-sidebar-layout";
@@ -16,6 +15,15 @@ interface HomeSidebarProps {
   onClose: () => void;
   activeView?: "chat" | "logs" | null;
   onSelectLogs?: () => void;
+}
+
+function navHref(sectionId: string): string {
+  if (sectionId === "user_settings") return "/settings";
+  if (sectionId === "closet") return "/closet";
+  if (sectionId === "refrigerator") return "/refrigerator";
+  if (sectionId === "music") return "/music";
+  if (sectionId === "messages") return "/chats";
+  return `/dashboard?section=${sectionId}`;
 }
 
 export function HomeSidebar({
@@ -45,16 +53,8 @@ export function HomeSidebar({
         `}
       >
         <div className="flex h-full w-64 flex-col">
-          <div className="flex h-14 items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4">
+          <div className="flex h-14 items-center border-b border-gray-200 px-4 dark:border-gray-800">
             <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Menu</span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-900"
-              aria-label="close sidebar"
-            >
-              <X size={20} />
-            </button>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
@@ -101,18 +101,12 @@ export function HomeSidebar({
                   {group.items.map((item) => (
                     <li key={item.id}>
                       <Link
-                        href={
-                          item.id === "chat_sessions"
-                            ? "/chats"
-                            : `/dashboard?section=${item.id}`
-                        }
+                        href={navHref(item.id)}
                         onClick={onClose}
                         className={navClass(false)}
                       >
                         <item.icon size={18} />
-                        <span className="truncate">
-                          {item.id === "chat_sessions" ? "\uB300\uD654\uBC29" : item.label}
-                        </span>
+                        <span className="truncate">{item.label}</span>
                       </Link>
                     </li>
                   ))}

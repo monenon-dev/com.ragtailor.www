@@ -39,7 +39,7 @@ export function ChatSessionsTable({ apiBaseUrl }: ChatSessionsTableProps) {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">User & Session</p>
-          <h1 className="text-2xl sm:text-3xl font-bold">대화방</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">채팅방</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             chat_sessions 테이블 — 사용자별 채팅 세션과 메시지 수입니다.
           </p>
@@ -83,7 +83,7 @@ export function ChatSessionsTable({ apiBaseUrl }: ChatSessionsTableProps) {
               {!loading && sessions.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    등록된 대화방이 없습니다. 홈에서 대화를 시작하거나 샘플 데이터를 넣어 보세요.
+                    등록된 채팅방이 없습니다. 홈에서 대화를 시작하거나 샘플 데이터를 넣어 보세요.
                   </td>
                 </tr>
               )}

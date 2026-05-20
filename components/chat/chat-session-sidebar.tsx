@@ -84,7 +84,7 @@ export function ChatSessionSidebar({
   const handleDeleteSelected = async () => {
     if (!onDeleteSessions || selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
-    const ok = window.confirm(`${ids.length}개의 대화방을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`);
+    const ok = window.confirm(`${ids.length}개의 채팅방을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`);
     if (!ok) return;
     await onDeleteSessions(ids);
     exitSelectionMode();
@@ -100,7 +100,7 @@ export function ChatSessionSidebar({
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-800 px-3 py-3">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          {selectionMode ? `${selectedIds.size}개 선택` : "대화방"}
+          {selectionMode ? `${selectedIds.size}개 선택` : "채팅방"}
         </h2>
         <div className="flex items-center gap-1">
           {onDeleteSessions && !selectionMode && sessions.length > 0 && (
@@ -108,8 +108,8 @@ export function ChatSessionSidebar({
               type="button"
               onClick={() => setSelectionMode(true)}
               className="rounded-lg border border-gray-200 p-2 text-gray-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-              aria-label="대화방 선택 삭제"
-              title="대화방 선택 삭제"
+              aria-label="채팅방 선택 삭제"
+              title="채팅방 선택 삭제"
             >
               <Square size={16} strokeWidth={2} />
             </button>
@@ -158,7 +158,7 @@ export function ChatSessionSidebar({
         )}
         {!loading && sessions.length === 0 && (
           <li className="px-3 py-8 text-center text-sm text-gray-500">
-            대화방이 없습니다.
+            채팅방이 없습니다.
             <br />
             새 대화를 시작해 보세요.
           </li>
@@ -201,7 +201,7 @@ export function ChatSessionSidebar({
                         ? "border-indigo-400 bg-white text-gray-900"
                         : "border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-950 dark:text-gray-100"
                     }`}
-                    aria-label="대화방 이름"
+                    aria-label="채팅방 이름"
                     maxLength={128}
                   />
                 ) : (

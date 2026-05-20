@@ -62,6 +62,13 @@ export default function TitanicHomePage() {
           </Link>
           <div className="flex items-center gap-2 shrink-0">
             <Link
+              href="/titanic-home"
+              aria-current="page"
+              className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-100"
+            >
+              수업중
+            </Link>
+            <Link
               href="/login"
               className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
             >

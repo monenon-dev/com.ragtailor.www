@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Database,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { ChatSessionsTable } from "@/components/chat/chat-sessions-table";
+import { UserPreferencesForm } from "@/components/settings/user-preferences-form";
 import {
   PlatformSidebarLayout,
   PLATFORM_NAV,
@@ -35,29 +37,23 @@ interface PlatformOverview {
 const SECTION_DESCRIPTIONS: Record<PlatformSection, string> = {
   overview: "전체 테이블 현황과 Neon DB 연결 상태를 확인합니다.",
   users: "이름, 이메일, 가입 정보 등 사용자 계정을 관리합니다.",
-  user_settings: "언어 설정, 선호 AI 모델 등 사용자 환경 설정입니다.",
-  chat_sessions: "여러 메시지를 묶는 채팅방, 세션 단위 정보입니다.",
-  messages: "role(user/assistant)과 content로 구성된 실제 대화 내용입니다.",
-  agent_configs: "에이전트 이름, 시스템 프롬프트, 사용 AI 모델 설정입니다.",
-  agent_logs: "에이전트의 사고 과정, 에러 등 내부 실행 로그입니다.",
-  documents: "RAG용으로 업로드한 문서의 메타데이터입니다.",
-  tool_definitions: "날씨 API, DB 검색 등 외부 도구 정의 스펙입니다.",
-  tool_usage_history: "어떤 도구를 언제 호출했는지 기록합니다.",
-  usage_stats: "토큰 사용량, API 호출 횟수, 예상 비용(과금 관리)입니다.",
+  user_settings: "패션·식재료·음악 선호도 — 옷장·냉장고·음악 추천에 반영됩니다.",
+  closet: "등록한 옷과 오늘 날씨에 맞는 코디를 확인합니다.",
+  refrigerator: "식재료·유통기한·날씨·선호 메뉴를 정리합니다.",
+  music: "출근·외출·요리 상황별 음악 추천 — /music 페이지",
+  chat_sessions: "채팅방 세션 (레거시 URL 호환).",
+  messages: "채팅방·대화 메시지 — Agent Chat 화면과 연결됩니다.",
 };
 
 const VALID_SECTIONS = new Set<PlatformSection>([
   "overview",
   "users",
   "user_settings",
+  "closet",
+  "refrigerator",
+  "music",
   "chat_sessions",
   "messages",
-  "agent_configs",
-  "agent_logs",
-  "documents",
-  "tool_definitions",
-  "tool_usage_history",
-  "usage_stats",
 ]);
 
 export default function DashboardPage() {
@@ -115,7 +111,11 @@ export default function DashboardPage() {
       ? null
       : overview?.tables.find((t) => t.key === activeSection);
 
-  const activeNavItem = PLATFORM_NAV.flatMap((g) => g.items).find((i) => i.id === activeSection);
+  const activeNavItem = PLATFORM_NAV.flatMap((g) => g.items).find(
+    (i) =>
+      i.id === activeSection ||
+      (activeSection === "chat_sessions" && i.id === "messages")
+  );
 
   const headerActions = (
     <>
@@ -154,8 +154,31 @@ export default function DashboardPage() {
 
       {activeSection === "overview" ? (
         <OverviewPanel overview={overview} loading={loading} />
-      ) : activeSection === "chat_sessions" ? (
+      ) : activeSection === "user_settings" ? (
+        <UserPreferencesForm
+          showBackLink={false}
+          title="선호도 설정"
+          subtitle={SECTION_DESCRIPTIONS.user_settings}
+        />
+      ) : activeSection === "messages" || activeSection === "chat_sessions" ? (
         <ChatSessionsTable apiBaseUrl={apiBaseUrl} />
+      ) : activeSection === "closet" || activeSection === "refrigerator" || activeSection === "music" ? (
+        <FeaturePanel
+          title={activeNavItem?.label ?? activeSection}
+          tableName={activeTable?.table_name ?? activeSection}
+          description={SECTION_DESCRIPTIONS[activeSection]}
+          count={activeTable?.count ?? 0}
+          category={activeTable?.category ?? ""}
+          icon={activeNavItem?.icon}
+          loading={loading}
+          pageHref={
+            activeSection === "closet"
+              ? "/closet"
+              : activeSection === "refrigerator"
+                ? "/refrigerator"
+                : "/music"
+          }
+        />
       ) : (
         <FeaturePanel
           title={activeNavItem?.label ?? activeSection}
@@ -165,6 +188,7 @@ export default function DashboardPage() {
           category={activeTable?.category ?? ""}
           icon={activeNavItem?.icon}
           loading={loading}
+          pageHref={activeSection === "users" ? "/admin" : undefined}
         />
       )}
     </PlatformSidebarLayout>
@@ -242,6 +266,7 @@ function FeaturePanel({
   category,
   icon: Icon,
   loading,
+  pageHref,
 }: {
   title: string;
   tableName: string;
@@ -250,6 +275,7 @@ function FeaturePanel({
   category: string;
   icon?: LucideIcon;
   loading: boolean;
+  pageHref?: string;
 }) {
   return (
     <div className="max-w-3xl">
@@ -280,6 +306,14 @@ function FeaturePanel({
         <p className="mt-4 text-sm text-gray-500">
           Neon 콘솔의 <span className="font-mono">{tableName}</span> 테이블과 동기화됩니다.
         </p>
+        {pageHref && (
+          <Link
+            href={pageHref}
+            className="mt-6 inline-flex rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            {title} 페이지 열기
+          </Link>
+        )}
       </div>
     </div>
   );

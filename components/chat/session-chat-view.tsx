@@ -160,7 +160,7 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
       }
     } catch (err) {
       console.error(err);
-      window.alert(err instanceof Error ? err.message : "대화방 삭제에 실패했습니다.");
+      window.alert(err instanceof Error ? err.message : "채팅방 삭제에 실패했습니다.");
     } finally {
       setDeleting(false);
     }
@@ -282,7 +282,7 @@ export function SessionChatView({ apiBaseUrl, userId, className = "" }: SessionC
     return (
       <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          대화방을 저장하려면 로그인해 주세요.
+          채팅방을 저장하려면 로그인해 주세요.
         </p>
         <Link
           href="/login"

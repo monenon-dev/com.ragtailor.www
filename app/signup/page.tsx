@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -8,65 +8,61 @@ import { Loader2 } from "lucide-react";
 import { formatApiError } from "@/lib/format-api-error";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const RESERVED_ADMIN_EMAIL = "admin@gmail.com";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [nickname, setNickname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [ui, setUi] = useState({
+    loading: false,
+    error: null as string | null,
+  });
 
-  const handleSubmit = async (e: FormEvent) => {
+  const patchUi = (patch: Partial<typeof ui>) =>
+    setUi((prev) => ({ ...prev, ...patch }));
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
+    const formProps = Object.fromEntries(new FormData(e.currentTarget).entries());
+    const nickname = String(formProps.nickname ?? "").trim();
+    const email = String(formProps.email ?? "").trim();
+    const password = String(formProps.password ?? "");
+    const confirmPassword = String(formProps.confirmPassword ?? "");
+
+    if (email.toLowerCase() === RESERVED_ADMIN_EMAIL) {
+      patchUi({ error: "이 이메일은 사용할 수 없습니다." });
+      return;
+    }
     if (password !== confirmPassword) {
-      setError("비밀번호가 일치하지 않습니다.");
+      patchUi({ error: "비밀번호가 일치하지 않습니다." });
       return;
     }
     if (password.length < 4) {
-      setError("비밀번호는 4자 이상이어야 합니다.");
+      patchUi({ error: "비밀번호는 4자 이상이어야 합니다." });
+      return;
+    }
+    if (!nickname) {
+      patchUi({ error: "닉네임을 입력하세요." });
       return;
     }
 
-    const trimmedNickname = nickname.trim();
-    const trimmedEmail = email.trim();
-    if (!trimmedNickname) {
-      setError("닉네임을 입력하세요.");
-      return;
-    }
-    alert(
-      [
-        `닉네임: ${trimmedNickname}`,
-        `이메일: ${trimmedEmail}`,
-        `비밀번호: ${password}`,
-        `비밀번호 확인: ${confirmPassword}`,
-      ].join("\n")
-    );
-
-    setIsLoading(true);
+    patchUi({ loading: true, error: null });
     try {
       const res = await fetch(`${apiBaseUrl}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nickname: trimmedNickname,
-          email: trimmedEmail,
-          password,
-        }),
+        body: JSON.stringify({ nickname, email, password }),
       });
       const data: Record<string, unknown> = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(formatApiError(data, "회원가입에 실패했습니다."));
+        patchUi({ error: formatApiError(data, "회원가입에 실패했습니다.") });
         return;
       }
-      const emailParam = encodeURIComponent(trimmedEmail);
+      const emailParam = encodeURIComponent(email);
       router.push(`/login?registered=1&email=${emailParam}`);
     } catch {
-      setError("네트워크 오류가 발생했습니다.");
+      patchUi({ error: "네트워크 오류가 발생했습니다." });
     } finally {
-      setIsLoading(false);
+      patchUi({ loading: false });
     }
   };
 
@@ -84,9 +80,9 @@ export default function SignupPage() {
           onSubmit={handleSubmit}
           className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm"
         >
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
-              {error}
+          {ui.error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+              {ui.error}
             </p>
           )}
 
@@ -96,12 +92,11 @@ export default function SignupPage() {
             </label>
             <input
               id="signup-nickname"
+              name="nickname"
               type="text"
               autoComplete="nickname"
               required
               maxLength={32}
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
               placeholder="표시 이름"
             />
@@ -113,11 +108,10 @@ export default function SignupPage() {
             </label>
             <input
               id="signup-email"
+              name="email"
               type="email"
               autoComplete="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
               placeholder="you@example.com"
             />
@@ -129,11 +123,10 @@ export default function SignupPage() {
             </label>
             <input
               id="signup-password"
+              name="password"
               type="password"
               autoComplete="new-password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">4자 이상</p>
@@ -145,21 +138,20 @@ export default function SignupPage() {
             </label>
             <input
               id="signup-confirm"
+              name="confirmPassword"
               type="password"
               autoComplete="new-password"
               required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={ui.loading}
             className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
           >
-            {isLoading ? <Loader2 className="animate-spin size-4" /> : null}
+            {ui.loading ? <Loader2 className="animate-spin size-4" /> : null}
             회원가입
           </button>
         </form>

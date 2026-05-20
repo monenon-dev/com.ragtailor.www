@@ -3,10 +3,22 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Terminal, Bot, Menu, X, Shirt, Egg, Coffee, type LucideIcon } from "lucide-react";
+import {
+  RefreshCw,
+  Terminal,
+  Bot,
+  Menu,
+  X,
+  Shirt,
+  Egg,
+  Coffee,
+  Music2,
+  type LucideIcon,
+} from "lucide-react";
 
 import { HomeSidebar } from "@/components/layout/home-sidebar";
 import { WeatherWidget } from "@/components/weather/weather-widget";
+import { buildChatsUrl, saveChatStarter } from "@/lib/chat-starter";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -20,6 +32,40 @@ const RECOMMENDED_TAGS: { label: string; prompt: string; icon: LucideIcon }[] = 
   { label: "오늘 옷차림 추천", prompt: "오늘 날씨에 맞는 옷차림을 추천해줘", icon: Shirt },
   { label: "냉장고 파먹기", prompt: "냉장고에 있는 재료로 만들 수 있는 요리를 추천해줘", icon: Egg },
   { label: "오늘의 한마디", prompt: "오늘 날씨에 맞는 한마디를 해줘", icon: Coffee },
+  { label: "음악 추천", prompt: "출근길에 듣기 좋은 음악 추천해줘", icon: Music2 },
+];
+
+const FEATURE_PROMO_CARDS = [
+  {
+    icon: "👔",
+    badge: "Beta",
+    badgeClassName:
+      "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300",
+    title: "오늘의 날씨 코디",
+    description:
+      "외출하기 전, 오늘 기온과 날씨 조건에 딱 맞는 쾌적하고 스타일리시한 패션 가이드를 확인해 보세요.",
+    href: "/closet",
+  },
+  {
+    icon: "🛒",
+    badge: "Coming Soon",
+    badgeClassName:
+      "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+    title: "지갑 수호 스마트 장보기",
+    description:
+      "냉장고 파먹기 후 부족한 재료를 기반으로 마트 장보기 리스트를 자동 생성합니다. 중복 소비를 막아주는 똑똑한 가이드예요.",
+    prompt: "냉장고에 있는 재료를 바탕으로 마트 장보기 리스트를 만들어 줘",
+  },
+  {
+    icon: "🎵",
+    badge: "Beta",
+    badgeClassName:
+      "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300",
+    title: "취향 저격 음악 추천",
+    description:
+      "비 오는 오늘, 잔잔한 감성을 채워줄 음악은? 출근길·놀러갈 때·요리할 때 상황에 맞는 플레이리스트를 날씨와 취향으로 추천합니다.",
+    href: "/music",
+  },
 ];
 
 export default function MonenonAiApp() {
@@ -28,10 +74,9 @@ export default function MonenonAiApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-  const handleRecommendedTag = (prompt: string) => {
-    sessionStorage.setItem("chat_starter_prompt", prompt);
-    sessionStorage.setItem("chat_starter_nonce", crypto.randomUUID());
-    router.push("/chats");
+  const navigateToChat = (prompt: string) => {
+    const nonce = saveChatStarter(prompt);
+    router.push(buildChatsUrl(prompt, nonce));
   };
 
   useEffect(() => {
@@ -80,6 +125,12 @@ export default function MonenonAiApp() {
               </Link>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <Link
+                href="/titanic-home"
+                className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors"
+              >
+                수업중
+              </Link>
               {authUser ? (
                 <>
                   <Link
@@ -121,8 +172,19 @@ export default function MonenonAiApp() {
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
               <div className="min-w-0 flex-1 max-w-3xl">
                 <h1 className="font-bold text-gray-900 dark:text-white leading-tight tracking-tight text-[clamp(1.25rem,2.2vw+0.45rem,3rem)] sm:text-[clamp(1.5rem,2vw+0.65rem,3.15rem)]">
-                  나만의{" "}
-                  <span className="text-indigo-600 dark:text-indigo-400">일상 메이트</span>
+                  {authUser ? (
+                    <>
+                      반가워요,{" "}
+                      <span className="text-indigo-600 dark:text-indigo-400">
+                        {authUser.nickname}님!
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      나만의{" "}
+                      <span className="text-indigo-600 dark:text-indigo-400">일상 메이트</span>
+                    </>
+                  )}
                 </h1>
                 <p className="mt-3 text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
                   명령하지 않아도 내 상황을 먼저 이해하는 똑똑한 AI와 대화해 보세요.
@@ -162,13 +224,68 @@ export default function MonenonAiApp() {
                     <button
                       key={label}
                       type="button"
-                      onClick={() => handleRecommendedTag(prompt)}
+                      onClick={() =>
+                        label === "음악 추천" ? router.push("/music") : navigateToChat(prompt)
+                      }
                       className="inline-flex items-center gap-1.5 rounded-full border border-transparent bg-indigo-50/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:border-indigo-500 hover:bg-indigo-100/90 dark:bg-indigo-950/50 dark:text-gray-200 dark:hover:border-indigo-400 dark:hover:bg-indigo-950/80"
                     >
                       <Icon size={14} className="shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
                       <span>{label}</span>
                     </button>
                   ))}
+              </div>
+
+              <div
+                className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6"
+                aria-label="기능 소개"
+              >
+                {FEATURE_PROMO_CARDS.map((card) => {
+                  const { icon, badge, badgeClassName, title, description } = card;
+                  const href = "href" in card ? card.href : undefined;
+                  const prompt = "prompt" in card ? card.prompt : undefined;
+                  const className =
+                    "group w-full rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-indigo-100 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-indigo-800";
+                  const inner = (
+                    <>
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <span
+                          className="text-2xl leading-none transition-all group-hover:scale-110"
+                          aria-hidden
+                        >
+                          {icon}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeClassName}`}
+                        >
+                          {badge}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                        {title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                        {description}
+                      </p>
+                    </>
+                  );
+                  if (href) {
+                    return (
+                      <Link key={title} href={href} className={className}>
+                        {inner}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <button
+                      key={title}
+                      type="button"
+                      onClick={() => prompt && navigateToChat(prompt)}
+                      className={className}
+                    >
+                      {inner}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

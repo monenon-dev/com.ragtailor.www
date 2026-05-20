@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ClearAdminSessionOutsideAdmin } from '@/components/auth/clear-admin-outside-admin'
 import './globals.css'
 
 const geistSans = Geist({
@@ -29,6 +30,7 @@ export default function RootLayout({
     // 1. lang을 "ko"에서 "en"으로 변경 (영문 서비스 기준)
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className={`${geistSans.className} antialiased bg-white dark:bg-gray-950`}>
+        <ClearAdminSessionOutsideAdmin />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

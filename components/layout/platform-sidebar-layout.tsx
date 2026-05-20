@@ -10,9 +10,9 @@ import {
   Settings,
   MessageSquare,
   Bot,
-  FileText,
-  Wrench,
-  BarChart3,
+  Shirt,
+  Refrigerator,
+  Music2,
   Home,
   type LucideIcon,
 } from "lucide-react";
@@ -21,14 +21,11 @@ export type PlatformSection =
   | "overview"
   | "users"
   | "user_settings"
+  | "closet"
+  | "refrigerator"
+  | "music"
   | "chat_sessions"
-  | "messages"
-  | "agent_configs"
-  | "agent_logs"
-  | "documents"
-  | "tool_definitions"
-  | "tool_usage_history"
-  | "usage_stats";
+  | "messages";
 
 export interface NavItem {
   id: PlatformSection;
@@ -49,38 +46,17 @@ export const PLATFORM_NAV: NavGroup[] = [
     icon: Users,
     items: [
       { id: "users", label: "Users", tableName: "users", icon: Users },
-      { id: "user_settings", label: "User_Settings", tableName: "user_settings", icon: Settings },
-      { id: "chat_sessions", label: "\uB300\uD654\uBC29", tableName: "chat_sessions", icon: MessageSquare },
+      { id: "user_settings", label: "선호도 설정", tableName: "user_settings", icon: Settings },
+      { id: "closet", label: "옷장", tableName: "closet", icon: Shirt },
+      { id: "refrigerator", label: "냉장고", tableName: "refrigerator", icon: Refrigerator },
+      { id: "music", label: "음악 추천", tableName: "music", icon: Music2 },
     ],
   },
   {
     title: "AI Interaction",
     icon: Bot,
     items: [
-      { id: "messages", label: "Messages", tableName: "messages", icon: MessageSquare },
-      { id: "agent_configs", label: "Agent_Configs", tableName: "agent_configs", icon: Bot },
-      { id: "agent_logs", label: "Agent_Logs", tableName: "agent_logs", icon: FileText },
-    ],
-  },
-  {
-    title: "RAG & Tools",
-    icon: Wrench,
-    items: [
-      { id: "documents", label: "Documents", tableName: "documents", icon: FileText },
-      { id: "tool_definitions", label: "Tool_Definitions", tableName: "tool_definitions", icon: Wrench },
-      {
-        id: "tool_usage_history",
-        label: "Tool_Usage_History",
-        tableName: "tool_usage_history",
-        icon: Wrench,
-      },
-    ],
-  },
-  {
-    title: "Billing & Stats",
-    icon: BarChart3,
-    items: [
-      { id: "usage_stats", label: "Usage_Stats", tableName: "usage_stats", icon: BarChart3 },
+      { id: "messages", label: "채팅방", tableName: "messages", icon: MessageSquare },
     ],
   },
 ];

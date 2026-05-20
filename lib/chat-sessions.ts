@@ -29,7 +29,7 @@ export async function fetchChatSessions(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      typeof data.detail === "string" ? data.detail : "대화방 목록을 불러오지 못했습니다."
+      typeof data.detail === "string" ? data.detail : "채팅방 목록을 불러오지 못했습니다."
     );
   }
   return res.json();
@@ -38,7 +38,7 @@ export async function fetchChatSessions(
 export async function fetchAllChatSessions(apiBaseUrl?: string): Promise<ChatSessionItem[]> {
   const res = await fetch(`${base(apiBaseUrl)}/platform/chat-sessions`);
   if (!res.ok) {
-    throw new Error("대화방 목록을 불러오지 못했습니다.");
+    throw new Error("채팅방 목록을 불러오지 못했습니다.");
   }
   return res.json();
 }
@@ -55,7 +55,7 @@ export async function createChatSession(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 생성 실패");
+    throw new Error(typeof data.detail === "string" ? data.detail : "채팅방 생성 실패");
   }
   return data;
 }
@@ -85,7 +85,7 @@ export async function deleteChatSession(
   );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 삭제 실패");
+    throw new Error(typeof data.detail === "string" ? data.detail : "채팅방 삭제 실패");
   }
 }
 
@@ -101,7 +101,7 @@ export async function deleteChatSessions(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 삭제 실패");
+    throw new Error(typeof data.detail === "string" ? data.detail : "채팅방 삭제 실패");
   }
   return Array.isArray(data.deleted_ids) ? (data.deleted_ids as number[]) : sessionIds;
 }
@@ -119,7 +119,7 @@ export async function updateChatSessionTitle(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(typeof data.detail === "string" ? data.detail : "대화방 이름 수정 실패");
+    throw new Error(typeof data.detail === "string" ? data.detail : "채팅방 이름 수정 실패");
   }
   return data;
 }
@@ -153,5 +153,23 @@ export function formatSessionDate(iso: string) {
     }).format(new Date(iso));
   } catch {
     return iso;
+  }
+}
+
+/** 채팅 말풍선용 — 오늘이면 시:분, 아니면 날짜+시:분 */
+export function formatMessageTime(iso: string) {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const isToday =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    const opts: Intl.DateTimeFormatOptions = isToday
+      ? { hour: "2-digit", minute: "2-digit" }
+      : { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
+    return new Intl.DateTimeFormat("ko-KR", opts).format(d);
+  } catch {
+    return "";
   }
 }

@@ -1,67 +1,48 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { formatApiError } from "@/lib/format-api-error";
+import { loginWithCredentials, saveAuthSession } from "@/lib/auth-api";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [ui, setUi] = useState({
+    loading: false,
+    error: null as string | null,
+  });
 
-  useEffect(() => {
-    if (searchParams.get("registered") === "1") {
-      setSuccessMessage("회원가입이 완료되었습니다. 로그인해 주세요.");
-    }
-    const prefillEmail = searchParams.get("email");
-    if (prefillEmail) {
-      setEmail(decodeURIComponent(prefillEmail));
-    }
-  }, [searchParams]);
+  const patchUi = (patch: Partial<typeof ui>) =>
+    setUi((prev) => ({ ...prev, ...patch }));
 
-  const handleSubmit = async (e: FormEvent) => {
+  const prefillEmail = searchParams.get("email");
+  const formKey = prefillEmail ?? "default";
+  const successMessage =
+    searchParams.get("registered") === "1"
+      ? "회원가입이 완료되었습니다. 로그인해 주세요."
+      : null;
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
+    const formProps = Object.fromEntries(new FormData(e.currentTarget).entries());
+    const email = String(formProps.email ?? "").trim();
+    const password = String(formProps.password ?? "");
+
+    patchUi({ loading: true, error: null });
     try {
-      const res = await fetch(`${apiBaseUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const data: Record<string, unknown> = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(formatApiError(data, "로그인에 실패했습니다."));
-        return;
-      }
-      const token = data.access_token;
-      if (typeof token === "string") {
-        sessionStorage.setItem("access_token", token);
-      }
-      if (typeof data.nickname === "string") {
-        sessionStorage.setItem("user_nickname", data.nickname);
-      }
-      if (typeof data.role === "string") {
-        sessionStorage.setItem("user_role", data.role);
-      }
-      if (typeof data.user_id === "number") {
-        sessionStorage.setItem("user_id", String(data.user_id));
-      }
-      router.push("/");
+      const session = await loginWithCredentials(email, password);
+      saveAuthSession(session);
+      router.push(searchParams.get("next") || "/");
       router.refresh();
-    } catch {
-      setError("네트워크 오류가 발생했습니다.");
+    } catch (err) {
+      patchUi({
+        error: err instanceof Error ? err.message : "로그인에 실패했습니다.",
+      });
     } finally {
-      setIsLoading(false);
+      patchUi({ loading: false });
     }
   };
 
@@ -76,6 +57,7 @@ export default function LoginPage() {
         </div>
 
         <form
+          key={formKey}
           onSubmit={handleSubmit}
           className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm"
         >
@@ -84,9 +66,9 @@ export default function LoginPage() {
               {successMessage}
             </p>
           )}
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
-              {error}
+          {ui.error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+              {ui.error}
             </p>
           )}
 
@@ -96,11 +78,11 @@ export default function LoginPage() {
             </label>
             <input
               id="login-email"
+              name="email"
               type="email"
               autoComplete="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              defaultValue={prefillEmail ? decodeURIComponent(prefillEmail) : undefined}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
               placeholder="you@example.com"
             />
@@ -112,21 +94,20 @@ export default function LoginPage() {
             </label>
             <input
               id="login-password"
+              name="password"
               type="password"
               autoComplete="current-password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 focus:ring-1 focus:ring-indigo-500 outline-none text-sm"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={ui.loading}
             className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
           >
-            {isLoading ? <Loader2 className="animate-spin size-4" /> : null}
+            {ui.loading ? <Loader2 className="animate-spin size-4" /> : null}
             로그인
           </button>
         </form>
@@ -145,5 +126,21 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <main className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+      <Loader2 className="animate-spin size-8 text-indigo-600" aria-label="로딩 중" />
+    </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
