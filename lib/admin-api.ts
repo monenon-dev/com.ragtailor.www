@@ -61,7 +61,7 @@ export async function withdrawAdminMember(userId: number): Promise<void> {
 export async function sendAdminWarning(
   userId: number,
   message: string
-): Promise<{ id: number; user_id: number; message: string }> {
+): Promise<{ id: number; admin_id: number; user_id: number; message: string }> {
   const res = await fetch(`${apiBaseUrl}/admin/users/${userId}/warnings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

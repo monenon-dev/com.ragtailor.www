@@ -3,11 +3,11 @@
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { fetchUserWarnings, type UserWarning } from "@/lib/warnings-api";
+import { fetchUserWarnings, type Warning } from "@/lib/warnings-api";
 import { getSessionUserId } from "@/lib/session-user";
 
 export function UserWarningsBanner() {
-  const [warnings, setWarnings] = useState<UserWarning[]>([]);
+  const [warnings, setWarnings] = useState<Warning[]>([]);
 
   useEffect(() => {
     const userId = getSessionUserId();

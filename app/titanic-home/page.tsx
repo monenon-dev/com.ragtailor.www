@@ -91,7 +91,7 @@ export default function TitanicHomePage() {
               타이타닉 홈
             </h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 font-mono break-words">
-              backend/apps/titanic/app/Titanic-Dataset.csv →{" "}
+              DB (people · tickets · cabins · embarked_ports · passengers) →{" "}
               <span className="text-indigo-600 dark:text-indigo-400">GET /titanic/data</span>
             </p>
           </div>
