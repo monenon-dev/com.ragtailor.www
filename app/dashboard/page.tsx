@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -56,7 +56,7 @@ const VALID_SECTIONS = new Set<PlatformSection>([
   "messages",
 ]);
 
-export default function DashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<PlatformSection>("overview");
   const [overview, setOverview] = useState<PlatformOverview | null>(null);
@@ -192,6 +192,22 @@ export default function DashboardPage() {
         />
       )}
     </PlatformSidebarLayout>
+  );
+}
+
+function DashboardFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+      대시보드를 불러오는 중…
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardFallback />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
 
