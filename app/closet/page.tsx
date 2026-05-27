@@ -15,7 +15,9 @@ import {
   type ClosetOverview,
 } from "@/lib/closet-api";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 
 type UiState = {
   loading: boolean;

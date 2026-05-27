@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+import { getApiBaseUrl } from "@/lib/api-base";
 import { formatMessageTime } from "@/lib/chat-sessions";
 
 export interface GeminiChatMessage {
@@ -59,7 +60,7 @@ export interface GeminiChatPanelProps {
   messagesEpoch?: number;
 }
 
-const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const defaultBase = getApiBaseUrl();
 
 /** React Strict Mode remount 시 starter 자동 전송 중복 방지 */
 const sentStarterKeys = new Set<string>();

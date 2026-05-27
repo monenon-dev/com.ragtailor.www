@@ -1,4 +1,6 @@
-const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const defaultBase = getApiBaseUrl();
 
 function base(apiBaseUrl?: string) {
   return (apiBaseUrl ?? defaultBase).replace(/\/$/, "");

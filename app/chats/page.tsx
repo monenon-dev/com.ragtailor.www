@@ -26,7 +26,9 @@ import {
 } from "@/lib/chat-sessions";
 import { getChatUserId } from "@/lib/chat-user";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 
 async function callAgentChat(text: string): Promise<GeminiChatMessage> {
   const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/agent/chat`, {

@@ -7,7 +7,9 @@ import { Loader2 } from "lucide-react";
 
 import { formatApiError } from "@/lib/format-api-error";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 const RESERVED_ADMIN_EMAIL = "admin@gmail.com";
 
 export default function SignupPage() {

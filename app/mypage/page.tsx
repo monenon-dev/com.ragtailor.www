@@ -7,7 +7,9 @@ import { Calendar, Loader2, Pencil, Shield } from "lucide-react";
 
 import { formatApiError } from "@/lib/format-api-error";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 
 interface UserProfile {
   id: number;

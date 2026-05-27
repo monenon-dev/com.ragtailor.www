@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Cloud, Droplets, Loader2, MapPin, RefreshCw, Wind } from "lucide-react";
 
+import { getApiBaseUrl } from "@/lib/api-base";
+
 export interface WeatherData {
   city: string;
   country?: string;
@@ -22,7 +24,7 @@ interface WeatherWidgetProps {
   variant?: "compact" | "hero";
 }
 
-const defaultBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const defaultBase = getApiBaseUrl();
 
 function heroGradient(icon?: string): string {
   const code = (icon || "01d").slice(0, 2);
@@ -67,7 +69,12 @@ export function WeatherWidget({
       setData(raw as WeatherData);
     } catch (e) {
       setData(null);
-      setError(e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.");
+      const msg = e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.";
+      setError(
+        msg === "Failed to fetch"
+          ? "백엔드에 연결할 수 없습니다. uvicorn(8000) 실행·CORS·API 주소를 확인하세요."
+          : msg
+      );
     } finally {
       setLoading(false);
     }

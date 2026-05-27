@@ -1,6 +1,8 @@
 import { formatApiError } from "@/lib/format-api-error";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 
 export type AuthSession = {
   access_token: string;

@@ -18,9 +18,10 @@ import {
 
 import { HomeSidebar } from "@/components/layout/home-sidebar";
 import { WeatherWidget } from "@/components/weather/weather-widget";
+import { getApiBaseUrl } from "@/lib/api-base";
 import { buildChatsUrl, saveChatStarter } from "@/lib/chat-starter";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const apiBaseUrl = getApiBaseUrl();
 
 interface AgentLogItem {
   [key: string]: string | number | boolean | null;

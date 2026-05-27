@@ -15,6 +15,7 @@ import {
 
 import { GENRE_QUICK_TAGS, MOOD_QUICK_TAGS } from "@/lib/music-api";
 import { getChatUserId } from "@/lib/chat-user";
+import { getApiBaseUrl } from "@/lib/api-base";
 import {
   fetchUserSettings,
   patchUserSettings,
@@ -123,7 +124,7 @@ type UiState = {
   cookingDraft: string;
 };
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const apiBaseUrl = getApiBaseUrl();
 
 function tabButtonClass(active: boolean, accent: string) {
   if (active) {

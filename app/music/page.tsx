@@ -27,7 +27,9 @@ import {
   type MusicScene,
 } from "@/lib/music-api";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-base";
+
+const apiBaseUrl = getApiBaseUrl();
 
 const SCENE_ICONS: Record<MusicScene, typeof Train> = {
   commute: Train,
