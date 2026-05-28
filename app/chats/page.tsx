@@ -275,10 +275,14 @@ function ChatsPageContent() {
       if (!userId || !activeSessionId) {
         throw new Error("채팅방이 선택되지 않았습니다.");
       }
-      await saveSessionMessage(activeSessionId, userId, "user", text, apiBaseUrl);
+      const userSavePromise = saveSessionMessage(activeSessionId, userId, "user", text, apiBaseUrl);
       const assistant = await callAgentChat(text);
-      await saveSessionMessage(activeSessionId, userId, "assistant", assistant.text, apiBaseUrl);
-      void loadSessions();
+      void Promise.allSettled([
+        userSavePromise,
+        saveSessionMessage(activeSessionId, userId, "assistant", assistant.text, apiBaseUrl),
+      ]).then(() => {
+        void loadSessions();
+      });
       return assistant;
     },
     [userId, activeSessionId, loadSessions]

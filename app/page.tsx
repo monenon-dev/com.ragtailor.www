@@ -80,6 +80,17 @@ export default function MonenonAiApp() {
     router.push(buildChatsUrl(prompt, nonce));
   };
 
+  const handleRecommendedClick = (label: string, prompt: string) => {
+    if (label === "음악 추천") {
+      router.push("/music");
+      return;
+    }
+
+    const userFriendlyPrompt =
+      label === "오늘의 한마디" ? "오늘 기분 좋아지는 한마디 해줘. 친근하게 말해줘." : prompt;
+    navigateToChat(userFriendlyPrompt);
+  };
+
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
     const nickname = sessionStorage.getItem("user_nickname");
@@ -225,9 +236,7 @@ export default function MonenonAiApp() {
                     <button
                       key={label}
                       type="button"
-                      onClick={() =>
-                        label === "음악 추천" ? router.push("/music") : navigateToChat(prompt)
-                      }
+                      onClick={() => handleRecommendedClick(label, prompt)}
                       className="inline-flex items-center gap-1.5 rounded-full border border-transparent bg-indigo-50/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:border-indigo-500 hover:bg-indigo-100/90 dark:bg-indigo-950/50 dark:text-gray-200 dark:hover:border-indigo-400 dark:hover:bg-indigo-950/80"
                     >
                       <Icon size={14} className="shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />

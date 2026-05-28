@@ -4,8 +4,6 @@ import Link from "next/link";
 import {
   Bot,
   Terminal,
-  LayoutDashboard,
-  Database,
 } from "lucide-react";
 
 import { PLATFORM_NAV } from "@/components/layout/platform-sidebar-layout";
@@ -113,25 +111,6 @@ export function HomeSidebar({
                 </ul>
               </div>
             ))}
-
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-              <Link
-                href="/dashboard"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-              >
-                <Database size={18} />
-                DB Dashboard
-              </Link>
-              <Link
-                href="/dashboard?section=overview"
-                onClick={onClose}
-                className="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"
-              >
-                <LayoutDashboard size={18} />
-                Platform Overview
-              </Link>
-            </div>
           </nav>
         </div>
       </aside>

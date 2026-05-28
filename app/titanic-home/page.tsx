@@ -2,12 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FileUp } from "lucide-react";
+import { FileUp, Menu } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/api-base";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
 type AuthUser = { nickname: string; role: string };
 
 export default function TitanicHomePage() {
+  const router = useRouter();
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -28,16 +36,84 @@ export default function TitanicHomePage() {
     setAuthUser(null);
   };
 
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      setUploadMessage("CSV 파일을 먼저 선택해주세요.");
+      return;
+    }
+
+    setUploading(true);
+    setUploadMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch(`${getApiBaseUrl()}/titanic/james/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        count?: number;
+        columns?: string[];
+        detail?: string;
+      };
+
+      if (!res.ok) {
+        setUploadMessage(data.detail ?? "업로드에 실패했습니다.");
+        return;
+      }
+
+      const columnsText = Array.isArray(data.columns) ? data.columns.join(", ") : "";
+      setUploadMessage(
+        `업로드 완료: ${data.count ?? 0}건 수신됨` + (columnsText ? ` | 컬럼: ${columnsText}` : "")
+      );
+      router.push("/titanic-home/passengers");
+    } catch {
+      setUploadMessage("서버 연결에 실패했습니다.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <main className="min-h-dvh bg-white text-gray-900">
       <header className="shrink-0 border-b border-gray-200 bg-white/90 backdrop-blur-md z-20">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <Link
-            href="/"
-            className="shrink-0 text-left text-lg font-bold tracking-tight text-indigo-600 hover:opacity-90 transition-opacity"
-          >
-            Monenon AI Agent
-          </Link>
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  aria-label="타이타닉 메뉴 열기"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72">
+                <SheetHeader>
+                  <SheetTitle>Titanic 메뉴</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col gap-2">
+                  <Link href="/titanic-home" className="rounded-md px-3 py-2 text-sm hover:bg-gray-100">
+                    데이터 수집(CSV 업로드)
+                  </Link>
+                  <Link
+                    href="/titanic-home/passengers"
+                    className="rounded-md px-3 py-2 text-sm hover:bg-gray-100"
+                  >
+                    고객 명단(Passenger)
+                  </Link>
+                </nav>
+              </SheetContent>
+            </Sheet>
+            <Link
+              href="/"
+              className="shrink-0 text-left text-lg font-bold tracking-tight text-indigo-600 hover:opacity-90 transition-opacity"
+            >
+              Monenon AI Agent
+            </Link>
+          </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {authUser ? (
               <>
@@ -103,11 +179,27 @@ export default function TitanicHomePage() {
               <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-600">
                 <FileUp className="h-6 w-6" aria-hidden />
               </div>
-              <p className="text-sm font-medium text-gray-800">CSV 파일 읽기 기능이 제거되었습니다.</p>
+              <p className="text-sm font-medium text-gray-800">Titanic CSV를 업로드해주세요.</p>
               <p className="mt-2 text-xs text-gray-500">
-                프로젝트 내부/로컬 파일을 읽는 코드(`input type=file`, 드래그드롭, CSV 파싱)를 모두 삭제한
-                상태입니다.
+                업로드 주소: <code>/titanic/james/upload</code> (POST)
               </p>
+              <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3">
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {uploading ? "업로드 중..." : "CSV 업로드"}
+                </button>
+                {uploadMessage ? <p className="text-xs text-gray-600">{uploadMessage}</p> : null}
+              </div>
             </div>
           </div>
         </section>
