@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { GoogleAuthSection } from "@/components/auth/google-auth-section";
 import { formatApiError } from "@/lib/format-api-error";
 
 import { getApiBaseUrl } from "@/lib/api-base";
@@ -78,10 +79,10 @@ export default function SignupPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">새 계정 만들기</p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm"
-        >
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm">
+          <GoogleAuthSection redirectTo="/" />
+
+          <form onSubmit={handleSubmit} className="space-y-4">
           {ui.error && (
             <p role="alert" className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
               {ui.error}
@@ -156,7 +157,8 @@ export default function SignupPage() {
             {ui.loading ? <Loader2 className="animate-spin size-4" /> : null}
             회원가입
           </button>
-        </form>
+          </form>
+        </div>
 
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
           이미 계정이 있으신가요?{" "}

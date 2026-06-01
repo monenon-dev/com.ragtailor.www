@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { GoogleAuthSection } from "@/components/auth/google-auth-section";
 import { loginWithCredentials, saveAuthSession } from "@/lib/auth-api";
 
 function LoginForm() {
@@ -20,6 +21,7 @@ function LoginForm() {
 
   const prefillEmail = searchParams.get("email");
   const formKey = prefillEmail ?? "default";
+  const redirectTo = searchParams.get("next") || "/";
   const successMessage =
     searchParams.get("registered") === "1"
       ? "회원가입이 완료되었습니다. 로그인해 주세요."
@@ -56,11 +58,10 @@ function LoginForm() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">계정으로 로그인</p>
         </div>
 
-        <form
-          key={formKey}
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm"
-        >
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-6 shadow-sm">
+          <GoogleAuthSection redirectTo={redirectTo} />
+
+          <form key={formKey} onSubmit={handleSubmit} className="space-y-4">
           {successMessage && (
             <p className="text-sm text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900 rounded-lg px-3 py-2">
               {successMessage}
@@ -110,7 +111,8 @@ function LoginForm() {
             {ui.loading ? <Loader2 className="animate-spin size-4" /> : null}
             로그인
           </button>
-        </form>
+          </form>
+        </div>
 
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
           계정이 없으신가요?{" "}

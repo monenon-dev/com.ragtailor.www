@@ -18,6 +18,7 @@ import {
 
 import { HomeSidebar } from "@/components/layout/home-sidebar";
 import { WeatherWidget } from "@/components/weather/weather-widget";
+import { clearAuthSession, getAuthSession } from "@/lib/auth-api";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { buildChatsUrl, saveChatStarter } from "@/lib/chat-starter";
 
@@ -92,19 +93,14 @@ export default function MonenonAiApp() {
   };
 
   useEffect(() => {
-    const token = sessionStorage.getItem("access_token");
-    const nickname = sessionStorage.getItem("user_nickname");
-    const role = sessionStorage.getItem("user_role");
-    if (token && nickname) {
-      setAuthUser({ nickname, role: role || "user" });
+    const session = getAuthSession();
+    if (session) {
+      setAuthUser({ nickname: session.nickname, role: session.role });
     }
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("access_token");
-    sessionStorage.removeItem("user_nickname");
-    sessionStorage.removeItem("user_role");
-    sessionStorage.removeItem("user_id");
+    clearAuthSession();
     setAuthUser(null);
   };
 
