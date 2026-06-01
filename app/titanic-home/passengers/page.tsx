@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,6 +22,15 @@ type TitanicRow = {
   Embarked: string | null;
 };
 
+type PassengerListResponse = {
+  items: TitanicRow[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  detail?: string;
+};
+
 const PAGE_SIZE = 50;
 
 export default function TitanicPassengersPage() {
@@ -30,12 +39,8 @@ export default function TitanicPassengersPage() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [rowsMessage, setRowsMessage] = useState("");
   const [page, setPage] = useState(1);
-
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(rows.length / PAGE_SIZE)), [rows.length]);
-  const pagedRows = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return rows.slice(start, start + PAGE_SIZE);
-  }, [rows, page]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -56,39 +61,46 @@ export default function TitanicPassengersPage() {
     setAuthUser(null);
   };
 
-  const fetchRows = async () => {
+  const fetchRows = async (targetPage = page) => {
     setLoadingRows(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/titanic/data`);
-      const data = (await res.json().catch(() => ({}))) as TitanicRow[] | { detail?: string };
+      const res = await fetch(
+        `${getApiBaseUrl()}/titanic/walter/passengers?page=${targetPage}&page_size=${PAGE_SIZE}`
+      );
+      const data = (await res.json().catch(() => ({}))) as PassengerListResponse | { detail?: string };
       if (!res.ok) {
         setRows([]);
+        setTotal(0);
+        setTotalPages(1);
         setRowsMessage(typeof data === "object" && "detail" in data ? (data.detail ?? "") : "");
-        setPage(1);
         return;
       }
-      const nextRows = Array.isArray(data) ? data : [];
-      setRows(nextRows);
-      setRowsMessage(nextRows.length > 0 ? "" : "저장된 Passenger 데이터가 없습니다.");
-      setPage(1);
+      const payload = data as PassengerListResponse;
+      setRows(Array.isArray(payload.items) ? payload.items : []);
+      setTotal(typeof payload.total === "number" ? payload.total : 0);
+      setTotalPages(typeof payload.total_pages === "number" ? Math.max(1, payload.total_pages) : 1);
+      setPage(typeof payload.page === "number" ? payload.page : targetPage);
+      setRowsMessage(
+        payload.detail ??
+          (payload.total > 0 ? "" : "저장된 Passenger 데이터가 없습니다.")
+      );
     } catch {
       setRows([]);
+      setTotal(0);
+      setTotalPages(1);
       setRowsMessage("Passenger 데이터를 불러오지 못했습니다.");
-      setPage(1);
     } finally {
       setLoadingRows(false);
     }
   };
 
   useEffect(() => {
-    fetchRows();
+    fetchRows(1);
   }, []);
 
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  const goToPage = (nextPage: number) => {
+    fetchRows(nextPage);
+  };
 
   return (
     <main className="min-h-dvh bg-white text-gray-900">
@@ -173,7 +185,7 @@ export default function TitanicPassengersPage() {
               </div>
               <button
                 type="button"
-                onClick={fetchRows}
+                onClick={() => fetchRows(page)}
                 disabled={loadingRows}
                 className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               >
@@ -210,7 +222,7 @@ export default function TitanicPassengersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pagedRows.map((row) => (
+                      {rows.map((row) => (
                         <tr key={row.PassengerId} className="border-t border-gray-100">
                           <td className="whitespace-nowrap px-3 py-2">{row.PassengerId}</td>
                           <td className="whitespace-nowrap px-3 py-2">{row.Survived ?? ""}</td>
@@ -232,14 +244,14 @@ export default function TitanicPassengersPage() {
 
                 <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3 text-xs">
                   <p className="text-gray-600">
-                    총 {rows.length}명 중 {(page - 1) * PAGE_SIZE + 1}-
-                    {Math.min(page * PAGE_SIZE, rows.length)}명 표시
+                    총 {total}명 중 {(page - 1) * PAGE_SIZE + 1}-
+                    {Math.min(page * PAGE_SIZE, total)}명 표시
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                      disabled={page <= 1}
+                      onClick={() => goToPage(Math.max(1, page - 1))}
+                      disabled={page <= 1 || loadingRows}
                       className="rounded border border-gray-300 px-2 py-1 disabled:opacity-50"
                     >
                       이전
@@ -249,8 +261,8 @@ export default function TitanicPassengersPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                      disabled={page >= totalPages}
+                      onClick={() => goToPage(Math.min(totalPages, page + 1))}
+                      disabled={page >= totalPages || loadingRows}
                       className="rounded border border-gray-300 px-2 py-1 disabled:opacity-50"
                     >
                       다음
