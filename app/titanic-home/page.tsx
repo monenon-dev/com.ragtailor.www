@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FileUp, Menu } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-base";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type AuthUser = { nickname: string; role: string };
 
@@ -48,17 +55,22 @@ export default function TitanicHomePage() {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 120_000);
       const res = await fetch(`${getApiBaseUrl()}/titanic/james/upload`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
+      window.clearTimeout(timeoutId);
       const data = (await res.json().catch(() => ({}))) as {
         count?: number;
         columns?: string[];
         detail?: string;
+        persisted?: number;
       };
 
-      if (!res.ok) {
+      if (!res.ok || data.detail) {
         setUploadMessage(data.detail ?? "업로드에 실패했습니다.");
         return;
       }
@@ -68,8 +80,12 @@ export default function TitanicHomePage() {
         `업로드 완료: ${data.count ?? 0}건 수신됨` + (columnsText ? ` | 컬럼: ${columnsText}` : "")
       );
       router.push("/titanic-home/passengers");
-    } catch {
-      setUploadMessage("서버 연결에 실패했습니다.");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setUploadMessage("업로드 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.");
+      } else {
+        setUploadMessage("서버 연결에 실패했습니다. 백엔드(8000)가 실행 중인지 확인해주세요.");
+      }
     } finally {
       setUploading(false);
     }
@@ -93,6 +109,9 @@ export default function TitanicHomePage() {
               <SheetContent side="left" className="w-72">
                 <SheetHeader>
                   <SheetTitle>Titanic 메뉴</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    타이타닉 데이터 수집 및 월터 자기소개 페이지로 이동합니다.
+                  </SheetDescription>
                 </SheetHeader>
                 <nav className="mt-6 flex flex-col gap-2">
                   <Link href="/titanic-home" className="rounded-md px-3 py-2 text-sm hover:bg-gray-100">
@@ -102,7 +121,7 @@ export default function TitanicHomePage() {
                     href="/titanic-home/passengers"
                     className="rounded-md px-3 py-2 text-sm hover:bg-gray-100"
                   >
-                    고객 명단(Passenger)
+                    월터의 자기소개
                   </Link>
                 </nav>
               </SheetContent>
