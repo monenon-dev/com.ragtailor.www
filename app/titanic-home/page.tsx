@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FileUp, Menu } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { TitanicNav } from "@/components/titanic-nav";
 import {
   Sheet,
   SheetContent,
@@ -110,20 +111,10 @@ export default function TitanicHomePage() {
                 <SheetHeader>
                   <SheetTitle>Titanic 메뉴</SheetTitle>
                   <SheetDescription className="sr-only">
-                    타이타닉 데이터 수집 및 월터 자기소개 페이지로 이동합니다.
+                    타이타닉 데이터 수집, 월터 자기소개, 이소디어 정보 페이지로 이동합니다.
                   </SheetDescription>
                 </SheetHeader>
-                <nav className="mt-6 flex flex-col gap-2">
-                  <Link href="/titanic-home" className="rounded-md px-3 py-2 text-sm hover:bg-gray-100">
-                    데이터 수집(CSV 업로드)
-                  </Link>
-                  <Link
-                    href="/titanic-home/passengers"
-                    className="rounded-md px-3 py-2 text-sm hover:bg-gray-100"
-                  >
-                    월터의 자기소개
-                  </Link>
-                </nav>
+                <TitanicNav active="upload" />
               </SheetContent>
             </Sheet>
             <Link

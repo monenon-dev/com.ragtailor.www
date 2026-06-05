@@ -1,21 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { Cloud, Droplets, Loader2, MapPin, RefreshCw, Wind } from "lucide-react";
 
 import { getApiBaseUrl } from "@/lib/api-base";
+import { useWeather } from "@/lib/use-weather";
+import type { WeatherData } from "@/lib/weather-api";
 
-export interface WeatherData {
-  city: string;
-  country?: string;
-  temp_c?: number;
-  feels_like_c?: number;
-  humidity?: number;
-  description?: string;
-  icon?: string;
-  icon_url?: string;
-  wind_mps?: number;
-}
+export type { WeatherData };
 
 interface WeatherWidgetProps {
   apiBaseUrl?: string;
@@ -45,44 +36,7 @@ export function WeatherWidget({
   className = "",
   variant = "compact",
 }: WeatherWidgetProps) {
-  const [data, setData] = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const base = apiBaseUrl.replace(/\/$/, "");
-      const res = await fetch(`${base}/weather`);
-      const raw: unknown = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const detail =
-          typeof raw === "object" &&
-          raw !== null &&
-          "detail" in raw &&
-          typeof (raw as { detail: unknown }).detail === "string"
-            ? (raw as { detail: string }).detail
-            : `날씨 조회 실패 (${res.status})`;
-        throw new Error(detail);
-      }
-      setData(raw as WeatherData);
-    } catch (e) {
-      setData(null);
-      const msg = e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.";
-      setError(
-        msg === "Failed to fetch"
-          ? "백엔드에 연결할 수 없습니다. uvicorn(8000) 실행·CORS·API 주소를 확인하세요."
-          : msg
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { data, loading, error, reload: load } = useWeather(apiBaseUrl);
 
   if (variant === "hero") {
     return (

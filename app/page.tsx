@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { HomeSidebar } from "@/components/layout/home-sidebar";
+import { SecretaryPersona } from "@/components/secretary/secretary-persona";
 import { WeatherWidget } from "@/components/weather/weather-widget";
 import { clearAuthSession, getAuthSession } from "@/lib/auth-api";
 import { getApiBaseUrl } from "@/lib/api-base";
@@ -40,9 +41,6 @@ const RECOMMENDED_TAGS: { label: string; prompt: string; icon: LucideIcon }[] = 
 const FEATURE_PROMO_CARDS = [
   {
     icon: "👔",
-    badge: "Beta",
-    badgeClassName:
-      "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300",
     title: "오늘의 날씨 코디",
     description:
       "외출하기 전, 오늘 기온과 날씨 조건에 딱 맞는 쾌적하고 스타일리시한 패션 가이드를 확인해 보세요.",
@@ -50,9 +48,6 @@ const FEATURE_PROMO_CARDS = [
   },
   {
     icon: "🛒",
-    badge: "Coming Soon",
-    badgeClassName:
-      "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
     title: "지갑 수호 스마트 장보기",
     description:
       "냉장고 파먹기 후 부족한 재료를 기반으로 마트 장보기 리스트를 자동 생성합니다. 중복 소비를 막아주는 똑똑한 가이드예요.",
@@ -60,9 +55,6 @@ const FEATURE_PROMO_CARDS = [
   },
   {
     icon: "🎵",
-    badge: "Beta",
-    badgeClassName:
-      "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300",
     title: "취향 저격 음악 추천",
     description:
       "비 오는 오늘, 잔잔한 감성을 채워줄 음악은? 출근길·놀러갈 때·요리할 때 상황에 맞는 플레이리스트를 날씨와 취향으로 추천합니다.",
@@ -179,24 +171,10 @@ export default function MonenonAiApp() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
               <div className="min-w-0 flex-1 max-w-3xl">
-                <h1 className="font-bold text-gray-900 dark:text-white leading-tight tracking-tight text-[clamp(1.25rem,2.2vw+0.45rem,3rem)] sm:text-[clamp(1.5rem,2vw+0.65rem,3.15rem)]">
-                  {authUser ? (
-                    <>
-                      반가워요,{" "}
-                      <span className="text-indigo-600 dark:text-indigo-400">
-                        {authUser.nickname}님!
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      나만의{" "}
-                      <span className="text-indigo-600 dark:text-indigo-400">일상 메이트</span>
-                    </>
-                  )}
-                </h1>
-                <p className="mt-3 text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-                  명령하지 않아도 내 상황을 먼저 이해하는 똑똑한 AI와 대화해 보세요.
-                </p>
+                <SecretaryPersona
+                  apiBaseUrl={apiBaseUrl}
+                  nickname={authUser?.nickname ?? null}
+                />
               </div>
               <WeatherWidget
                 apiBaseUrl={apiBaseUrl}
@@ -246,24 +224,19 @@ export default function MonenonAiApp() {
                 aria-label="기능 소개"
               >
                 {FEATURE_PROMO_CARDS.map((card) => {
-                  const { icon, badge, badgeClassName, title, description } = card;
+                  const { icon, title, description } = card;
                   const href = "href" in card ? card.href : undefined;
                   const prompt = "prompt" in card ? card.prompt : undefined;
                   const className =
                     "group w-full rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-indigo-100 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-indigo-800";
                   const inner = (
                     <>
-                      <div className="mb-4 flex items-start justify-between gap-3">
+                      <div className="mb-4">
                         <span
                           className="text-2xl leading-none transition-all group-hover:scale-110"
                           aria-hidden
                         >
                           {icon}
-                        </span>
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeClassName}`}
-                        >
-                          {badge}
                         </span>
                       </div>
                       <h3 className="text-base font-semibold text-gray-900 dark:text-white">

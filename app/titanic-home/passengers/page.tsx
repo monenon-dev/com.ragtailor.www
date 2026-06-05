@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { TitanicNav } from "@/components/titanic-nav";
 import {
   Sheet,
   SheetContent,
@@ -60,24 +61,6 @@ const COLUMNS: (keyof TitanicRow)[] = [
   "Cabin",
   "Embarked",
 ];
-
-function TitanicNav({ active }: { active: "upload" | "walter" }) {
-  const linkClass = (key: typeof active) =>
-    key === active
-      ? "rounded-md bg-gray-100 px-3 py-2 text-sm font-medium"
-      : "rounded-md px-3 py-2 text-sm hover:bg-gray-100";
-
-  return (
-    <nav className="mt-6 flex flex-col gap-2">
-      <Link href="/titanic-home" className={linkClass("upload")}>
-        데이터 수집(CSV 업로드)
-      </Link>
-      <Link href="/titanic-home/passengers" className={linkClass("walter")}>
-        월터의 자기소개
-      </Link>
-    </nav>
-  );
-}
 
 export default function WalterPassengersPage() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -193,7 +176,7 @@ export default function WalterPassengersPage() {
                 <SheetHeader>
                   <SheetTitle>Titanic 메뉴</SheetTitle>
                   <SheetDescription className="sr-only">
-                    타이타닉 데이터 수집 및 월터 자기소개 페이지로 이동합니다.
+                    타이타닉 데이터 수집, 월터 자기소개, 이소디어 정보 페이지로 이동합니다.
                   </SheetDescription>
                 </SheetHeader>
                 <TitanicNav active="walter" />
