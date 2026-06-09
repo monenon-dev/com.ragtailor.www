@@ -42,21 +42,21 @@ export interface NavGroup {
 
 export const PLATFORM_NAV: NavGroup[] = [
   {
-    title: "User & Session",
+    title: "개인 맞춤",
     icon: Users,
     items: [
-      { id: "users", label: "Users", tableName: "users", icon: Users },
-      { id: "user_settings", label: "선호도 설정", tableName: "user_settings", icon: Settings },
-      { id: "closet", label: "옷장", tableName: "closet", icon: Shirt },
-      { id: "refrigerator", label: "냉장고", tableName: "refrigerator", icon: Refrigerator },
+      { id: "users", label: "사용자 관리", tableName: "users", icon: Users },
+      { id: "user_settings", label: "취향 설정", tableName: "user_settings", icon: Settings },
+      { id: "closet", label: "오늘의 옷장", tableName: "closet", icon: Shirt },
+      { id: "refrigerator", label: "냉장고 관리", tableName: "refrigerator", icon: Refrigerator },
       { id: "music", label: "음악 추천", tableName: "music", icon: Music2 },
     ],
   },
   {
-    title: "AI Interaction",
+    title: "AI 대화",
     icon: Bot,
     items: [
-      { id: "messages", label: "채팅방", tableName: "messages", icon: MessageSquare },
+      { id: "messages", label: "AI 채팅방", tableName: "messages", icon: MessageSquare },
     ],
   },
 ];
@@ -132,7 +132,7 @@ export function PlatformSidebarLayout({
 
             {PLATFORM_NAV.map((group) => (
               <div key={group.title}>
-                <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold tracking-wider text-gray-500">
                   <group.icon size={14} />
                   {group.title}
                 </p>
@@ -159,7 +159,7 @@ export function PlatformSidebarLayout({
                 className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900"
               >
                 <Home size={18} />
-                Agent Chat Home
+                에이전트 채팅
               </Link>
             </div>
           </nav>

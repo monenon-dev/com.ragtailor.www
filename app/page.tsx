@@ -179,7 +179,7 @@ export default function MonenonAiApp() {
               <WeatherWidget
                 apiBaseUrl={apiBaseUrl}
                 variant="hero"
-                className="mx-auto lg:mx-0 lg:shrink-0 lg:mt-1"
+                className="mx-auto lg:mx-0 lg:shrink-0 lg:mt-10"
               />
             </div>
 
@@ -190,7 +190,7 @@ export default function MonenonAiApp() {
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-indigo-600 bg-indigo-600 text-white text-sm font-medium shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
                 >
                   <Bot size={18} />
-                  <span>Agent Chat</span>
+                  <span>에이전트 채팅</span>
                 </Link>
                 <button
                   type="button"
@@ -202,7 +202,7 @@ export default function MonenonAiApp() {
                   }`}
                 >
                   <Terminal size={18} />
-                  <span>Execution Logs</span>
+                  <span>실행 로그</span>
                 </button>
               </div>
               <div className="mt-[1cm] flex flex-wrap gap-1.5" aria-label="추천 태그">

@@ -52,13 +52,13 @@ export function HomeSidebar({
       >
         <div className="flex h-full w-64 flex-col">
           <div className="flex h-14 items-center border-b border-gray-200 px-4 dark:border-gray-800">
-            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Menu</span>
+            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">메뉴</span>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
             <div>
-              <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Home
+              <p className="mb-2 px-2 text-xs font-semibold tracking-wider text-gray-500">
+                홈
               </p>
               <ul className="space-y-0.5">
                 <li>
@@ -68,7 +68,7 @@ export function HomeSidebar({
                     className={navClass(activeView === "chat")}
                   >
                     <Bot size={18} />
-                    Agent Chat
+                    에이전트 채팅
                   </Link>
                 </li>
                 {onSelectLogs && (
@@ -82,7 +82,7 @@ export function HomeSidebar({
                       className={navClass(activeView === "logs")}
                     >
                       <Terminal size={18} />
-                      Execution Logs
+                      실행 로그
                     </button>
                   </li>
                 )}
@@ -91,7 +91,7 @@ export function HomeSidebar({
 
             {PLATFORM_NAV.map((group) => (
               <div key={group.title}>
-                <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <p className="mb-2 flex items-center gap-2 px-2 text-xs font-semibold tracking-wider text-gray-500">
                   <group.icon size={14} />
                   {group.title}
                 </p>
