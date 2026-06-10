@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type TitanicNavActive = "upload" | "walter" | "isidor";
+export type TitanicNavActive = "upload" | "walter" | "smith";
 
 export function TitanicNav({ active }: { active: TitanicNavActive }) {
   const linkClass = (key: TitanicNavActive) =>
@@ -11,13 +11,13 @@ export function TitanicNav({ active }: { active: TitanicNavActive }) {
   return (
     <nav className="mt-6 flex flex-col gap-2">
       <Link href="/titanic-home" className={linkClass("upload")}>
-        데이터 수집(CSV 업로드)
+        1. 데이터 수집(CSV 업로드)
       </Link>
       <Link href="/titanic-home/passengers" className={linkClass("walter")}>
-        월터의 자기소개
+        2. 월터의 자기소개
       </Link>
-      <Link href="/titanic-home/isidor" className={linkClass("isidor")}>
-        이소디어의 정보
+      <Link href="/titanic-home/smith" className={linkClass("smith")}>
+        3. 스미스 선장 채팅
       </Link>
     </nav>
   );

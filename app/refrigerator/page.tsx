@@ -91,8 +91,8 @@ export default function RefrigeratorPage() {
     patchUi({ adding: true, error: null });
     try {
       await createRefrigeratorItem(
+        userId,
         {
-          user_id: userId,
           name: ui.name.trim(),
           quantity: ui.quantity.trim() || undefined,
           expiry_date: ui.expiry_date || undefined,
@@ -112,7 +112,7 @@ export default function RefrigeratorPage() {
   const handleDelete = async (id: number) => {
     if (!userId) return;
     try {
-      await deleteRefrigeratorItem(id, userId, apiBaseUrl);
+      await deleteRefrigeratorItem(userId, id, apiBaseUrl);
       await load();
     } catch (err) {
       patchUi({ error: err instanceof Error ? err.message : "삭제 실패" });

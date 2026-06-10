@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
+import { ChatFridgeBanner } from "@/components/chat/chat-fridge-banner";
 import { ChatSessionsSidebar } from "@/components/chat/chat-sessions-sidebar";
 import {
   GeminiChatPanel,
@@ -25,16 +26,18 @@ import {
   type ChatSessionItem,
 } from "@/lib/chat-sessions";
 import { getChatUserId } from "@/lib/chat-user";
-
+import { loadMyPagePreferences, wrapPromptWithSpeechTone } from "@/lib/mypage-preferences";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 const apiBaseUrl = getApiBaseUrl();
 
-async function callAgentChat(text: string): Promise<GeminiChatMessage> {
+async function callAgentChat(text: string, userId: number): Promise<GeminiChatMessage> {
+  const { speechTone } = loadMyPagePreferences(userId);
+  const prompt = wrapPromptWithSpeechTone(text, speechTone);
   const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/agent/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: text }),
+    body: JSON.stringify({ prompt, user_id: userId }),
   });
   const raw: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -276,7 +279,7 @@ function ChatsPageContent() {
         throw new Error("채팅방이 선택되지 않았습니다.");
       }
       const userSavePromise = saveSessionMessage(activeSessionId, userId, "user", text, apiBaseUrl);
-      const assistant = await callAgentChat(text);
+      const assistant = await callAgentChat(text, userId);
       void Promise.allSettled([
         userSavePromise,
         saveSessionMessage(activeSessionId, userId, "assistant", assistant.text, apiBaseUrl),
@@ -367,6 +370,8 @@ function ChatsPageContent() {
               <Loader2 className="size-8 animate-spin text-indigo-600" aria-label="메시지 로딩 중" />
             </div>
           ) : activeSessionId ? (
+            <>
+            <ChatFridgeBanner userId={userId} apiBaseUrl={apiBaseUrl} />
             <GeminiChatPanel
               apiBaseUrl={apiBaseUrl}
               className="min-h-0 flex-1"
@@ -384,6 +389,7 @@ function ChatsPageContent() {
                 void loadSessions();
               }}
             />
+            </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
               <p className="text-sm text-gray-500 dark:text-gray-400">

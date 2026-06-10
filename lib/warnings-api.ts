@@ -11,9 +11,12 @@ export type Warning = {
 };
 
 export async function fetchUserWarnings(userId: number): Promise<Warning[]> {
-  const res = await fetch(`${apiBaseUrl}/auth/warnings?user_id=${userId}`);
+  const res = await fetch(`${apiBaseUrl}/auth/warnings?user_id=${userId}`, {
+    cache: "no-store",
+  });
   if (!res.ok) {
     return [];
   }
-  return res.json();
+  const data = (await res.json()) as Warning[];
+  return Array.isArray(data) ? data : [];
 }

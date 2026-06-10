@@ -1,20 +1,36 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   Loader2,
   RefreshCw,
-  Shield,
+  Search,
   Trash2,
   UserPlus,
   Users,
-  X,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AdminSidebarLayout } from "@/components/admin/admin-sidebar-layout";
 import {
   type AdminUser,
   type AdminUserFilter,
@@ -36,25 +52,45 @@ const ROLE_LABEL: Record<string, string> = {
   user: "일반",
 };
 
+const WARNING_PRESETS = [
+  "비매너 행위가 확인되었습니다.",
+  "이용 규칙 위반이 확인되었습니다.",
+  "스팸성 활동이 확인되었습니다.",
+] as const;
+
+type ConfirmState =
+  | { type: "withdraw"; user: AdminUser }
+  | { type: "warning"; user: AdminUser; message: string };
+
 export default function AdminPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [filter, setFilter] = useState<AdminUserFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [actionUserId, setActionUserId] = useState<number | null>(null);
+  const [warningModalUser, setWarningModalUser] = useState<AdminUser | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
 
-  const warningTarget = users.find((u) => u.id === actionUserId && u.role === "user") ?? null;
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (user) =>
+        user.nickname.toLowerCase().includes(q) || user.email.toLowerCase().includes(q)
+    );
+  }, [searchQuery, users]);
 
   useEffect(() => {
     setMounted(true);
@@ -72,7 +108,13 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      setUsers(await fetchAdminUsers(filter));
+      const rows = await fetchAdminUsers(filter);
+      setUsers(
+        rows.map((user) => ({
+          ...user,
+          warning_count: user.warning_count ?? 0,
+        }))
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.");
     } finally {
@@ -86,46 +128,55 @@ export default function AdminPage() {
     }
   }, [mounted, load]);
 
-  const handleWithdraw = async (user: AdminUser) => {
-    const ok = window.confirm(
-      `「${user.nickname}」(${user.email}) 계정을 탈퇴 처리할까요?\n관련 데이터(옷장·채팅 등)가 함께 삭제됩니다.`
-    );
-    if (!ok) return;
-    setActionBusy(true);
-    setActionError(null);
-    try {
-      await withdrawAdminMember(user.id);
-      await load();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "탈퇴 처리에 실패했습니다.");
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
   const openWarningModal = (user: AdminUser) => {
-    setActionUserId(user.id);
+    setWarningModalUser(user);
     setWarningMessage("");
     setActionError(null);
   };
 
   const closeWarningModal = () => {
-    setActionUserId(null);
+    setWarningModalUser(null);
     setWarningMessage("");
     setActionError(null);
   };
 
-  const handleSendWarning = async (e: React.FormEvent) => {
+  const requestWithdrawConfirm = (user: AdminUser) => {
+    setActionError(null);
+    setConfirm({ type: "withdraw", user });
+  };
+
+  const requestWarningConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!warningTarget) return;
+    if (!warningModalUser) return;
+    const message = warningMessage.trim();
+    if (!message) {
+      setActionError("경고 사유를 입력해 주세요.");
+      return;
+    }
+    setActionError(null);
+    setConfirm({ type: "warning", user: warningModalUser, message });
+  };
+
+  const executeConfirm = async () => {
+    if (!confirm) return;
     setActionBusy(true);
     setActionError(null);
+    setSuccessMessage(null);
     try {
-      await sendAdminWarning(warningTarget.id, warningMessage.trim());
-      closeWarningModal();
-      window.alert(`「${warningTarget.nickname}」님에게 경고를 전송했습니다.`);
+      if (confirm.type === "withdraw") {
+        await withdrawAdminMember(confirm.user.id);
+        setSuccessMessage(`「${confirm.user.nickname}」님을 탈퇴 처리했습니다.`);
+        closeWarningModal();
+      } else {
+        await sendAdminWarning(confirm.user.id, confirm.message);
+        setSuccessMessage(`「${confirm.user.nickname}」님에게 경고를 전송했습니다.`);
+        closeWarningModal();
+      }
+      setConfirm(null);
+      await load();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "경고 전송에 실패했습니다.");
+      setActionError(err instanceof Error ? err.message : "처리에 실패했습니다.");
+      setConfirm(null);
     } finally {
       setActionBusy(false);
     }
@@ -141,6 +192,7 @@ export default function AdminPage() {
       setEmail("");
       setPassword("");
       setShowForm(false);
+      setSuccessMessage("새 사용자 계정을 생성했습니다.");
       await load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "생성에 실패했습니다.");
@@ -158,66 +210,35 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <header className="border-b border-gray-200 bg-white/90 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/90">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400"
+    <AdminSidebarLayout
+      activeSection="members"
+      adminNickname={getAdminNickname()}
+      onLogout={() => {
+        clearAdminSession();
+        router.replace("/admin/login");
+      }}
+      headerActions={
+        <>
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-900"
           >
-            <ArrowLeft size={16} aria-hidden />
-            홈
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-violet-700 dark:text-violet-300 sm:inline">
-              {getAdminNickname()}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                clearAdminSession();
-                router.replace("/admin/login");
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
-            >
-              로그아웃
-            </button>
-            <button
-              type="button"
-              onClick={() => load()}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-900"
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              새로고침
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              <UserPlus size={14} />
-              계정 추가
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-8 flex items-start gap-4">
-          <div className="rounded-xl bg-violet-100 p-3 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-            <Shield size={28} aria-hidden />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-              관리자
-            </h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              일반 사용자 계정을 조회·생성하고, 탈퇴·경고를 처리합니다.
-            </p>
-          </div>
-        </div>
-
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            새로고침
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            <UserPlus size={14} />
+            계정 추가
+          </button>
+        </>
+      }
+    >
         {showForm && (
           <form
             onSubmit={handleCreate}
@@ -279,22 +300,44 @@ export default function AdminPage() {
           </form>
         )}
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setFilter(tab.key)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                filter === tab.key
-                  ? "bg-indigo-600 text-white"
-                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setFilter(tab.key)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  filter === tab.key
+                    ? "bg-indigo-600 text-white"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <label className="relative block w-full sm:max-w-xs">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="닉네임·이메일 검색"
+              className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-gray-700 dark:bg-gray-950"
+            />
+          </label>
         </div>
+
+        {successMessage && (
+          <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
+            {successMessage}
+          </p>
+        )}
 
         {error && (
           <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
@@ -302,7 +345,7 @@ export default function AdminPage() {
           </p>
         )}
 
-        {actionError && !warningTarget && (
+        {actionError && !warningModalUser && (
           <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {actionError}
           </p>
@@ -312,7 +355,8 @@ export default function AdminPage() {
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
             <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
               <Users size={16} aria-hidden />
-              {loading ? "불러오는 중…" : `${users.length}명`}
+              {loading ? "불러오는 중…" : `${filteredUsers.length}명`}
+              {searchQuery.trim() && !loading ? ` (전체 ${users.length}명)` : null}
             </span>
           </div>
 
@@ -328,14 +372,16 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {!loading && users.length === 0 && (
+                {!loading && filteredUsers.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      표시할 사용자가 없습니다.
+                      {searchQuery.trim()
+                        ? "검색 결과가 없습니다."
+                        : "표시할 사용자가 없습니다."}
                     </td>
                   </tr>
                 )}
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-950/40">
                     <td className="px-4 py-3 font-mono tabular-nums text-gray-500">{user.id}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
@@ -364,11 +410,16 @@ export default function AdminPage() {
                           >
                             <AlertTriangle size={12} aria-hidden />
                             경고
+                            {user.warning_count > 0 && (
+                              <span className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold text-white">
+                                {user.warning_count}
+                              </span>
+                            )}
                           </button>
                           <button
                             type="button"
                             disabled={actionBusy}
-                            onClick={() => handleWithdraw(user)}
+                            onClick={() => requestWithdrawConfirm(user)}
                             className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100 disabled:opacity-50 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-950"
                           >
                             <Trash2 size={12} aria-hidden />
@@ -385,43 +436,48 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
-      </div>
 
-      {warningTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="warn-dialog-title"
-        >
-          <form
-            onSubmit={handleSendWarning}
-            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2
-                  id="warn-dialog-title"
-                  className="text-lg font-semibold text-gray-900 dark:text-white"
-                >
-                  경고 보내기
-                </h2>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  {warningTarget.nickname} · {warningTarget.email}
-                </p>
+      <Dialog
+        open={warningModalUser !== null}
+        onOpenChange={(open) => {
+          if (!open) closeWarningModal();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={requestWarningConfirm}>
+            <DialogHeader>
+              <DialogTitle>경고 보내기</DialogTitle>
+              <DialogDescription>
+                {warningModalUser
+                  ? `${warningModalUser.nickname} · ${warningModalUser.email}`
+                  : ""}
+                {warningModalUser && warningModalUser.warning_count > 0
+                  ? ` · 누적 경고 ${warningModalUser.warning_count}회`
+                  : ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                사유 선택 (빠른 입력)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {WARNING_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setWarningMessage(preset)}
+                    className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-amber-300 hover:bg-amber-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                  >
+                    {preset.replace("가 확인되었습니다.", "")}
+                  </button>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={closeWarningModal}
-                className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="닫기"
-              >
-                <X size={18} />
-              </button>
             </div>
+
             <label className="mt-4 block text-sm">
               <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
-                경고 메시지
+                경고 사유
               </span>
               <textarea
                 required
@@ -433,10 +489,12 @@ export default function AdminPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
               />
             </label>
-            {actionError && (
+
+            {actionError && warningModalUser && (
               <p className="mt-2 text-sm text-red-600 dark:text-red-400">{actionError}</p>
             )}
-            <div className="mt-4 flex justify-end gap-2">
+
+            <DialogFooter className="mt-4">
               <button
                 type="button"
                 onClick={closeWarningModal}
@@ -449,12 +507,64 @@ export default function AdminPage() {
                 disabled={actionBusy || !warningMessage.trim()}
                 className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
               >
-                {actionBusy ? "전송 중…" : "경고 전송"}
+                경고 전송
               </button>
-            </div>
+            </DialogFooter>
           </form>
-        </div>
-      )}
-    </main>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={confirm !== null}
+        onOpenChange={(open) => {
+          if (!open && !actionBusy) setConfirm(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirm?.type === "withdraw" ? "탈퇴 확인" : "경고 전송 확인"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm?.type === "withdraw" ? (
+                <>
+                  「{confirm.user.nickname}」({confirm.user.email}) 계정을 탈퇴 처리할까요?
+                  <br />
+                  관련 데이터(옷장·채팅 등)가 함께 삭제됩니다.
+                </>
+              ) : confirm?.type === "warning" ? (
+                <>
+                  「{confirm.user.nickname}」님에게 아래 내용으로 경고를 전송할까요?
+                  <span className="mt-2 block rounded-lg bg-gray-100 px-3 py-2 text-left text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    {confirm.message}
+                  </span>
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionBusy}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionBusy}
+              onClick={(e) => {
+                e.preventDefault();
+                void executeConfirm();
+              }}
+              className={
+                confirm?.type === "withdraw"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-amber-600 hover:bg-amber-700"
+              }
+            >
+              {actionBusy
+                ? "처리 중…"
+                : confirm?.type === "withdraw"
+                  ? "탈퇴 처리"
+                  : "경고 전송"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminSidebarLayout>
   );
 }

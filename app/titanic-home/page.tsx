@@ -111,7 +111,7 @@ export default function TitanicHomePage() {
                 <SheetHeader>
                   <SheetTitle>Titanic 메뉴</SheetTitle>
                   <SheetDescription className="sr-only">
-                    타이타닉 데이터 수집, 월터 자기소개, 이소디어 정보 페이지로 이동합니다.
+                    타이타닉 데이터 수집, 월터 자기소개 페이지로 이동합니다.
                   </SheetDescription>
                 </SheetHeader>
                 <TitanicNav active="upload" />

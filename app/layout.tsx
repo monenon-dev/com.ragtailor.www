@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ClearAdminSessionOutsideAdmin } from '@/components/auth/clear-admin-outside-admin'
+import { UserWarningNotifier } from '@/components/auth/user-warning-notifier'
 import './globals.css'
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className={`${geistSans.className} antialiased bg-white dark:bg-gray-950`}>
         <ClearAdminSessionOutsideAdmin />
+        <UserWarningNotifier />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

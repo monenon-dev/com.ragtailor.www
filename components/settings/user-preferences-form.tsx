@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { RefrigeratorStockSection } from "@/components/settings/refrigerator-stock-section";
 import { GENRE_QUICK_TAGS, MOOD_QUICK_TAGS } from "@/lib/music-api";
 import { getChatUserId } from "@/lib/chat-user";
 import { getApiBaseUrl } from "@/lib/api-base";
@@ -148,7 +149,7 @@ function SectionSaveBar({
 }) {
   const accent = section === "music" ? "violet" : "indigo";
   return (
-    <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-6 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-2 flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
       {saved && (
         <p className="text-sm text-green-700 dark:text-green-400">{SECTION_SAVE_LABEL[section]} 완료</p>
       )}
@@ -171,10 +172,13 @@ export function UserPreferencesForm({
   showBackLink = true,
   title = "선호도 설정",
   subtitle = "옷장·냉장고·음악 추천에 반영되는 라이프스타일 선호도입니다.",
+  constrainHeight = false,
 }: {
   showBackLink?: boolean;
   title?: string;
   subtitle?: string;
+  /** true면 탭 패널(선호도 카드) 안에서만 스크롤 — 페이지 전체는 고정 */
+  constrainHeight?: boolean;
 }) {
   const [activeSection, setActiveSection] = useState<PreferenceSection>("fashion");
   const [prefs, setPrefs] = useState<LifestyleProfile>(defaultLifestyle);
@@ -361,7 +365,11 @@ export function UserPreferencesForm({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-8">
+    <div
+      className={`mx-auto max-w-3xl space-y-4 ${
+        constrainHeight ? "flex min-h-0 flex-1 flex-col pb-2" : "space-y-6 pb-8"
+      }`}
+    >
       {showBackLink && (
         <Link
           href="/"
@@ -372,7 +380,7 @@ export function UserPreferencesForm({
         </Link>
       )}
 
-      <header>
+      <header className={constrainHeight ? "shrink-0" : undefined}>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{title}</h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{subtitle}</p>
 
@@ -408,18 +416,24 @@ export function UserPreferencesForm({
       {ui.error && (
         <p
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          className={`rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 ${
+            constrainHeight ? "shrink-0" : ""
+          }`}
         >
           {ui.error}
         </p>
       )}
 
       {ui.loading ? (
-        <div className="flex justify-center py-16">
+        <div className={`flex justify-center py-16 ${constrainHeight ? "min-h-0 flex-1" : ""}`}>
           <Loader2 className="size-8 animate-spin text-indigo-600" aria-label="불러오는 중" />
         </div>
       ) : (
-        <div role="tabpanel" aria-label={PREF_TABS.find((t) => t.id === activeSection)?.label}>
+        <div
+          role="tabpanel"
+          aria-label={PREF_TABS.find((t) => t.id === activeSection)?.label}
+          className={constrainHeight ? "flex min-h-0 flex-1 flex-col" : undefined}
+        >
           {activeSection === "fashion" && (
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/40">
               <div className="mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
@@ -526,19 +540,28 @@ export function UserPreferencesForm({
           )}
 
           {activeSection === "food" && (
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900/40">
-              <div className="mb-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                <UtensilsCrossed size={22} />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">식재료·요리 선호도</h2>
+            <section
+              className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900/40 ${
+                constrainHeight ? "min-h-0 flex-1" : ""
+              }`}
+            >
+              <div className="shrink-0 border-b border-slate-200 px-6 pb-4 pt-6 dark:border-slate-700">
+                <div className="mb-2 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                  <UtensilsCrossed size={22} />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    식재료·요리 선호도
+                  </h2>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  냉장고 레시피 추천에 반영됩니다.{" "}
+                  <Link href="/refrigerator" className="text-indigo-600 underline dark:text-indigo-400">
+                    냉장고
+                  </Link>
+                  페이지에서 확인하세요.
+                </p>
               </div>
-              <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-                냉장고 레시피 추천에 반영됩니다.{" "}
-                <Link href="/refrigerator" className="text-indigo-600 underline dark:text-indigo-400">
-                  냉장고
-                </Link>
-                페이지에서 확인하세요.
-              </p>
 
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
               <div className="space-y-6">
                 <div>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -585,6 +608,8 @@ export function UserPreferencesForm({
                     </button>
                   </div>
                 </div>
+
+                {userId ? <RefrigeratorStockSection userId={userId} /> : null}
 
                 <div>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">선호 요리·식단 성향</p>
@@ -642,13 +667,16 @@ export function UserPreferencesForm({
                   </div>
                 </div>
               </div>
+              </div>
 
-              <SectionSaveBar
-                section="food"
-                saving={ui.savingSection === "food"}
-                saved={ui.savedSection === "food"}
-                onSave={() => void handleSaveSection("food")}
-              />
+              <div className="shrink-0 border-t border-slate-200 px-6 pb-6 pt-2 dark:border-slate-700">
+                <SectionSaveBar
+                  section="food"
+                  saving={ui.savingSection === "food"}
+                  saved={ui.savedSection === "food"}
+                  onSave={() => void handleSaveSection("food")}
+                />
+              </div>
             </section>
           )}
 

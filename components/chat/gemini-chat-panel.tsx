@@ -285,10 +285,12 @@ export function GeminiChatPanel({
               >
                 <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                 {msg.role === "assistant" &&
-                  (msg.model || msg.confidence !== undefined || (msg.sources && msg.sources.length > 0)) && (
+                  (msg.model ||
+                    (msg.confidence !== undefined && msg.confidence > 0) ||
+                    (msg.sources && msg.sources.length > 0)) && (
                   <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 text-[11px] opacity-70">
                     {msg.model && <span>모델: {msg.model}</span>}
-                    {msg.confidence !== undefined && (
+                    {msg.confidence !== undefined && msg.confidence > 0 && (
                       <span className={msg.model ? "ml-3" : ""}>신뢰도: {confidencePct(msg.confidence)}</span>
                     )}
                     {msg.sources && msg.sources.length > 0 && (

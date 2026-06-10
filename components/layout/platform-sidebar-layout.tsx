@@ -45,7 +45,6 @@ export const PLATFORM_NAV: NavGroup[] = [
     title: "개인 맞춤",
     icon: Users,
     items: [
-      { id: "users", label: "사용자 관리", tableName: "users", icon: Users },
       { id: "user_settings", label: "취향 설정", tableName: "user_settings", icon: Settings },
       { id: "closet", label: "오늘의 옷장", tableName: "closet", icon: Shirt },
       { id: "refrigerator", label: "냉장고 관리", tableName: "refrigerator", icon: Refrigerator },

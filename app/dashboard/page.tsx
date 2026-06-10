@@ -2,16 +2,16 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Database,
   RefreshCw,
+  Settings,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
 import { ChatSessionsTable } from "@/components/chat/chat-sessions-table";
-import { UserPreferencesForm } from "@/components/settings/user-preferences-form";
 import {
   PlatformSidebarLayout,
   PLATFORM_NAV,
@@ -36,10 +36,9 @@ interface PlatformOverview {
   total_records: number;
 }
 
-const SECTION_DESCRIPTIONS: Record<PlatformSection, string> = {
+const SECTION_DESCRIPTIONS: Record<Exclude<PlatformSection, "users">, string> = {
   overview: "전체 테이블 현황과 Neon DB 연결 상태를 확인합니다.",
-  users: "이름, 이메일, 가입 정보 등 사용자 계정을 관리합니다.",
-  user_settings: "패션·식재료·음악 선호도 — 옷장·냉장고·음악 추천에 반영됩니다.",
+  user_settings: "관리자가 회원별 취향 설정(user_settings)을 조회합니다.",
   closet: "등록한 옷과 오늘 날씨에 맞는 코디를 확인합니다.",
   refrigerator: "식재료·유통기한·날씨·선호 메뉴를 정리합니다.",
   music: "출근·외출·요리 상황별 음악 추천 — /music 페이지",
@@ -49,7 +48,6 @@ const SECTION_DESCRIPTIONS: Record<PlatformSection, string> = {
 
 const VALID_SECTIONS = new Set<PlatformSection>([
   "overview",
-  "users",
   "user_settings",
   "closet",
   "refrigerator",
@@ -59,6 +57,7 @@ const VALID_SECTIONS = new Set<PlatformSection>([
 ]);
 
 function DashboardContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<PlatformSection>("overview");
   const [overview, setOverview] = useState<PlatformOverview | null>(null);
@@ -86,10 +85,14 @@ function DashboardContent() {
 
   useEffect(() => {
     const section = searchParams.get("section");
+    if (section === "users") {
+      router.replace("/admin");
+      return;
+    }
     if (section && VALID_SECTIONS.has(section as PlatformSection)) {
       setActiveSection(section as PlatformSection);
     }
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   const handleSeedDemo = async () => {
     setSeeding(true);
@@ -157,18 +160,32 @@ function DashboardContent() {
       {activeSection === "overview" ? (
         <OverviewPanel overview={overview} loading={loading} />
       ) : activeSection === "user_settings" ? (
-        <UserPreferencesForm
-          showBackLink={false}
-          title="선호도 설정"
-          subtitle={SECTION_DESCRIPTIONS.user_settings}
-        />
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-indigo-100 p-3 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+              <Settings size={24} aria-hidden />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">취향 설정</h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {SECTION_DESCRIPTIONS.user_settings}
+              </p>
+              <Link
+                href="/admin/user-settings"
+                className="mt-4 inline-flex rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                관리자 설정 조회 화면 열기
+              </Link>
+            </div>
+          </div>
+        </div>
       ) : activeSection === "messages" || activeSection === "chat_sessions" ? (
         <ChatSessionsTable apiBaseUrl={apiBaseUrl} />
-      ) : activeSection === "closet" || activeSection === "refrigerator" || activeSection === "music" ? (
+      ) : (
         <FeaturePanel
           title={activeNavItem?.label ?? activeSection}
           tableName={activeTable?.table_name ?? activeSection}
-          description={SECTION_DESCRIPTIONS[activeSection]}
+          description={SECTION_DESCRIPTIONS[activeSection as Exclude<PlatformSection, "users">]}
           count={activeTable?.count ?? 0}
           category={activeTable?.category ?? ""}
           icon={activeNavItem?.icon}
@@ -178,19 +195,10 @@ function DashboardContent() {
               ? "/closet"
               : activeSection === "refrigerator"
                 ? "/refrigerator"
-                : "/music"
+                : activeSection === "music"
+                  ? "/music"
+                  : undefined
           }
-        />
-      ) : (
-        <FeaturePanel
-          title={activeNavItem?.label ?? activeSection}
-          tableName={activeTable?.table_name ?? activeSection}
-          description={SECTION_DESCRIPTIONS[activeSection]}
-          count={activeTable?.count ?? 0}
-          category={activeTable?.category ?? ""}
-          icon={activeNavItem?.icon}
-          loading={loading}
-          pageHref={activeSection === "users" ? "/admin" : undefined}
         />
       )}
     </PlatformSidebarLayout>
@@ -239,7 +247,7 @@ function OverviewPanel({
 
       {overview && (
         <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="테이블 수" value="10" />
+          <StatCard label="테이블 수" value={String(overview.tables.length)} />
           <StatCard label="총 레코드" value={String(overview.total_records)} />
           <StatCard label="연결" value="OK" accent="text-green-600 dark:text-green-400" />
           <StatCard label="DB" value="Neon" />

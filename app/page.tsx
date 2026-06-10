@@ -79,9 +79,7 @@ export default function MonenonAiApp() {
       return;
     }
 
-    const userFriendlyPrompt =
-      label === "오늘의 한마디" ? "오늘 기분 좋아지는 한마디 해줘. 친근하게 말해줘." : prompt;
-    navigateToChat(userFriendlyPrompt);
+    navigateToChat(prompt);
   };
 
   useEffect(() => {
