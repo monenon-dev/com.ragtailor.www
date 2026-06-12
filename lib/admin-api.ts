@@ -10,6 +10,8 @@ export type AdminUser = {
   email: string;
   role: AdminUserRole;
   warning_count: number;
+  is_suspended: boolean;
+  suspended_until: string | null;
 };
 
 export type AdminUserFilter = "all" | "admins" | "members";
@@ -61,19 +63,44 @@ export async function withdrawAdminMember(userId: number): Promise<void> {
   }
 }
 
+export type WarningSendResult = {
+  warning: { id: number; admin_id: number; user_id: number; message: string };
+  warning_count: number;
+  suspended: boolean;
+  suspended_until: string | null;
+};
+
 export async function sendAdminWarning(
   userId: number,
-  message: string
-): Promise<{ id: number; admin_id: number; user_id: number; message: string }> {
+  message: string,
+  suspendDays?: 1 | 3 | 5
+): Promise<WarningSendResult> {
+  const body: { message: string; suspend_days?: number } = { message };
+  if (suspendDays !== undefined) {
+    body.suspend_days = suspendDays;
+  }
   const res = await fetch(`${apiBaseUrl}/admin/users/${userId}/warnings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(
       typeof data.detail === "string" ? data.detail : "경고 전송에 실패했습니다."
+    );
+  }
+  return data;
+}
+
+export async function unsuspendAdminMember(userId: number): Promise<AdminUser> {
+  const res = await fetch(`${apiBaseUrl}/admin/users/${userId}/unsuspend`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === "string" ? data.detail : "정지 해제에 실패했습니다."
     );
   }
   return data;

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  Unlock,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -37,6 +38,7 @@ import {
   createAdminMember,
   fetchAdminUsers,
   sendAdminWarning,
+  unsuspendAdminMember,
   withdrawAdminMember,
 } from "@/lib/admin-api";
 import { clearAdminSession, getAdminNickname, isSessionAdmin } from "@/lib/session-user";
@@ -58,9 +60,18 @@ const WARNING_PRESETS = [
   "스팸성 활동이 확인되었습니다.",
 ] as const;
 
+type SuspendDays = 1 | 3 | 5;
+
+const SUSPEND_DAY_OPTIONS: { days: SuspendDays; label: string }[] = [
+  { days: 1, label: "1일" },
+  { days: 3, label: "3일" },
+  { days: 5, label: "5일" },
+];
+
 type ConfirmState =
   | { type: "withdraw"; user: AdminUser }
-  | { type: "warning"; user: AdminUser; message: string };
+  | { type: "warning"; user: AdminUser; message: string; suspendDays: SuspendDays }
+  | { type: "unsuspend"; user: AdminUser };
 
 export default function AdminPage() {
   const router = useRouter();
@@ -79,6 +90,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [warningModalUser, setWarningModalUser] = useState<AdminUser | null>(null);
   const [warningMessage, setWarningMessage] = useState("");
+  const [suspendDays, setSuspendDays] = useState<SuspendDays>(1);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -113,6 +125,8 @@ export default function AdminPage() {
         rows.map((user) => ({
           ...user,
           warning_count: user.warning_count ?? 0,
+          is_suspended: user.is_suspended ?? false,
+          suspended_until: user.suspended_until ?? null,
         }))
       );
     } catch (e) {
@@ -131,12 +145,14 @@ export default function AdminPage() {
   const openWarningModal = (user: AdminUser) => {
     setWarningModalUser(user);
     setWarningMessage("");
+    setSuspendDays(1);
     setActionError(null);
   };
 
   const closeWarningModal = () => {
     setWarningModalUser(null);
     setWarningMessage("");
+    setSuspendDays(1);
     setActionError(null);
   };
 
@@ -154,7 +170,17 @@ export default function AdminPage() {
       return;
     }
     setActionError(null);
-    setConfirm({ type: "warning", user: warningModalUser, message });
+    setConfirm({
+      type: "warning",
+      user: warningModalUser,
+      message,
+      suspendDays: warningModalUser.warning_count >= 2 ? suspendDays : 1,
+    });
+  };
+
+  const requestUnsuspendConfirm = (user: AdminUser) => {
+    setActionError(null);
+    setConfirm({ type: "unsuspend", user });
   };
 
   const executeConfirm = async () => {
@@ -167,10 +193,23 @@ export default function AdminPage() {
         await withdrawAdminMember(confirm.user.id);
         setSuccessMessage(`「${confirm.user.nickname}」님을 탈퇴 처리했습니다.`);
         closeWarningModal();
-      } else {
-        await sendAdminWarning(confirm.user.id, confirm.message);
-        setSuccessMessage(`「${confirm.user.nickname}」님에게 경고를 전송했습니다.`);
+      } else if (confirm.type === "warning") {
+        const result = await sendAdminWarning(
+          confirm.user.id,
+          confirm.message,
+          confirm.user.warning_count >= 2 ? confirm.suspendDays : undefined
+        );
+        if (result.suspended) {
+          setSuccessMessage(
+            `「${confirm.user.nickname}」님에게 경고를 전송했고, 누적 ${result.warning_count}회로 계정을 ${confirm.suspendDays}일간 일시정지했습니다.`
+          );
+        } else {
+          setSuccessMessage(`「${confirm.user.nickname}」님에게 경고를 전송했습니다.`);
+        }
         closeWarningModal();
+      } else {
+        await unsuspendAdminMember(confirm.user.id);
+        setSuccessMessage(`「${confirm.user.nickname}」님의 계정 일시정지를 해제했습니다.`);
       }
       setConfirm(null);
       await load();
@@ -385,7 +424,17 @@ export default function AdminPage() {
                   <tr key={user.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-950/40">
                     <td className="px-4 py-3 font-mono tabular-nums text-gray-500">{user.id}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                      {user.nickname}
+                      <div className="flex flex-col gap-1">
+                        <span>{user.nickname}</span>
+                        {user.is_suspended && (
+                          <span className="inline-flex w-fit rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-800 dark:bg-red-950 dark:text-red-200">
+                            일시정지
+                            {user.suspended_until
+                              ? ` · ${new Date(user.suspended_until).toLocaleString("ko-KR")}까지`
+                              : ""}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{user.email}</td>
                     <td className="px-4 py-3">
@@ -416,6 +465,17 @@ export default function AdminPage() {
                               </span>
                             )}
                           </button>
+                          {user.is_suspended && (
+                            <button
+                              type="button"
+                              disabled={actionBusy}
+                              onClick={() => requestUnsuspendConfirm(user)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100"
+                            >
+                              <Unlock size={12} aria-hidden />
+                              정지 해제
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={actionBusy}
@@ -475,6 +535,30 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {warningModalUser && warningModalUser.warning_count >= 2 && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  일시정지 기간 (누적 3회 이상 시 적용)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SUSPEND_DAY_OPTIONS.map((option) => (
+                    <button
+                      key={option.days}
+                      type="button"
+                      onClick={() => setSuspendDays(option.days)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                        suspendDays === option.days
+                          ? "border-red-500 bg-red-600 text-white"
+                          : "border-gray-200 bg-gray-50 text-gray-700 hover:border-red-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <label className="mt-4 block text-sm">
               <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">
                 경고 사유
@@ -523,7 +607,11 @@ export default function AdminPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm?.type === "withdraw" ? "탈퇴 확인" : "경고 전송 확인"}
+              {confirm?.type === "withdraw"
+                ? "탈퇴 확인"
+                : confirm?.type === "unsuspend"
+                  ? "정지 해제 확인"
+                  : "경고 전송 확인"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm?.type === "withdraw" ? (
@@ -532,9 +620,19 @@ export default function AdminPage() {
                   <br />
                   관련 데이터(옷장·채팅 등)가 함께 삭제됩니다.
                 </>
+              ) : confirm?.type === "unsuspend" ? (
+                <>
+                  「{confirm.user.nickname}」({confirm.user.email}) 계정의 일시정지를 해제할까요?
+                </>
               ) : confirm?.type === "warning" ? (
                 <>
                   「{confirm.user.nickname}」님에게 아래 내용으로 경고를 전송할까요?
+                  {confirm.user.warning_count >= 2 && (
+                    <>
+                      <br />
+                      누적 3회 이상이면 {confirm.suspendDays}일간 일시정지됩니다.
+                    </>
+                  )}
                   <span className="mt-2 block rounded-lg bg-gray-100 px-3 py-2 text-left text-gray-800 dark:bg-gray-900 dark:text-gray-200">
                     {confirm.message}
                   </span>
@@ -553,14 +651,18 @@ export default function AdminPage() {
               className={
                 confirm?.type === "withdraw"
                   ? "bg-red-600 hover:bg-red-700"
-                  : "bg-amber-600 hover:bg-amber-700"
+                  : confirm?.type === "unsuspend"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-amber-600 hover:bg-amber-700"
               }
             >
               {actionBusy
                 ? "처리 중…"
                 : confirm?.type === "withdraw"
                   ? "탈퇴 처리"
-                  : "경고 전송"}
+                  : confirm?.type === "unsuspend"
+                    ? "정지 해제"
+                    : "경고 전송"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

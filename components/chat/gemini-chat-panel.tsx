@@ -10,7 +10,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-import { getApiBaseUrl } from "@/lib/api-base";
+import { getTitanicApiBaseUrl } from "@/lib/api-base";
 import { formatMessageTime } from "@/lib/chat-sessions";
 
 export interface GeminiChatMessage {
@@ -34,9 +34,9 @@ interface AgentChatResponse {
 }
 
 export interface GeminiChatPanelProps {
-  /** 기본값: NEXT_PUBLIC_API_BASE_URL 또는 http://127.0.0.1:8000 */
+  /** 기본값: `{API_BASE}/api` (Titanic 라우터) */
   apiBaseUrl?: string;
-  /** POST 경로 — 기본 `/chat` (`{ message }` → `{ model, reply }`) */
+  /** POST 경로 — 기본 `/titanic/smith/chat` (`{ message }` → `{ reply }`) */
   chatPath?: string;
   placeholder?: string;
   emptyTitle?: string;
@@ -60,7 +60,7 @@ export interface GeminiChatPanelProps {
   messagesEpoch?: number;
 }
 
-const defaultBase = getApiBaseUrl();
+const defaultBase = getTitanicApiBaseUrl();
 
 /** React Strict Mode remount 시 starter 자동 전송 중복 방지 */
 const sentStarterKeys = new Set<string>();
@@ -69,9 +69,25 @@ function isAgentChatPath(path: string) {
   return path.replace(/\/$/, "").endsWith("/agent/chat");
 }
 
-function buildRequestBody(path: string, text: string): string {
+function isSmithChatPath(path: string) {
+  return path.replace(/\/$/, "").endsWith("/smith/chat");
+}
+
+function buildRequestBody(
+  path: string,
+  text: string,
+  conversation: GeminiChatMessage[] = []
+): string {
   if (isAgentChatPath(path)) {
     return JSON.stringify({ prompt: text });
+  }
+  if (isSmithChatPath(path)) {
+    return JSON.stringify({
+      messages: [
+        ...conversation.map((msg) => ({ role: msg.role, text: msg.text })),
+        { role: "user", text },
+      ],
+    });
   }
   return JSON.stringify({ message: text });
 }
@@ -106,10 +122,10 @@ function parseAssistantReply(
 
 export function GeminiChatPanel({
   apiBaseUrl = defaultBase,
-  chatPath = "/chat",
-  placeholder = "질문하세요 (예: 서울 날씨 어때?)",
-  emptyTitle: _emptyTitle = "Gemini와 대화를 시작하세요",
-  emptySubtitle: _emptySubtitle = "백엔드 POST /chat 이 연결되어 있으면 응답이 표시됩니다.",
+  chatPath = "/titanic/smith/chat",
+  placeholder = "타이타닉에 대해 질문하세요 (예: 생존자는 몇 명인가요?)",
+  emptyTitle: _emptyTitle = "스미스 선장과 대화를 시작하세요",
+  emptySubtitle: _emptySubtitle = "백엔드 POST /api/titanic/smith/chat 이 연결되어 있으면 응답이 표시됩니다.",
   className = "",
   initialMessages,
   onSendMessage,
@@ -124,6 +140,7 @@ export function GeminiChatPanel({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const sentInitialRef = useRef<{ resetKey: string | number | undefined; prompt: string } | null>(null);
 
@@ -133,6 +150,10 @@ export function GeminiChatPanel({
       el.scrollTop = el.scrollHeight;
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -182,7 +203,7 @@ export function GeminiChatPanel({
         const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${chatPath}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: buildRequestBody(chatPath, trimmed),
+          body: buildRequestBody(chatPath, trimmed, messages),
         });
 
         const raw: unknown = await res.json().catch(() => ({}));
@@ -212,7 +233,7 @@ export function GeminiChatPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [apiBaseUrl, chatPath, onSendMessage]);
+  }, [apiBaseUrl, chatPath, messages, onSendMessage]);
 
   useEffect(() => {
     const trimmed = initialInput?.trim();
@@ -264,7 +285,7 @@ export function GeminiChatPanel({
           )}
           {messages.map((msg, idx) => {
             const isUser = msg.role === "user";
-            const timeLabel = msg.ts ? formatMessageTime(msg.ts) : null;
+            const timeLabel = mounted && msg.ts ? formatMessageTime(msg.ts) : null;
 
             return (
             <div

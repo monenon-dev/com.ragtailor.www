@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FileUp, Menu } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/api-base";
+import { getApiBaseUrl, getTitanicApiBaseUrl } from "@/lib/api-base";
 import { TitanicNav } from "@/components/titanic-nav";
 import {
   Sheet,
@@ -58,7 +58,7 @@ export default function TitanicHomePage() {
 
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 120_000);
-      const res = await fetch(`${getApiBaseUrl()}/titanic/james/upload`, {
+      const res = await fetch(`${getTitanicApiBaseUrl()}/titanic/james/upload`, {
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -191,7 +191,7 @@ export default function TitanicHomePage() {
               </div>
               <p className="text-sm font-medium text-gray-800">Titanic CSV를 업로드해주세요.</p>
               <p className="mt-2 text-xs text-gray-500">
-                업로드 주소: <code>/titanic/james/upload</code> (POST)
+                업로드 주소: <code>/api/titanic/james/upload</code> (POST)
               </p>
               <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3">
                 <input

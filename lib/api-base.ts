@@ -25,3 +25,8 @@ export function getApiBaseUrl(): string {
   }
   return LOCAL_API_BASE;
 }
+
+/** Titanic API — `/api/titanic/{crew}/myself` 형식 */
+export function getTitanicApiBaseUrl(): string {
+  return `${getApiBaseUrl()}/api`;
+}

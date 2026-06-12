@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 
 import { GeminiChatPanel, type GeminiChatMessage } from "@/components/chat/gemini-chat-panel";
@@ -14,7 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { getApiBaseUrl } from "@/lib/api-base";
+import { getTitanicApiBaseUrl } from "@/lib/api-base";
 
 type AuthUser = { nickname: string; role: string };
 
@@ -23,25 +23,16 @@ type SmithProfile = {
   name: string;
 };
 
-type ChatTurn = { role: "user" | "assistant"; text: string };
-
-type SmithChatResponse = {
-  reply: string;
-  rejected?: boolean;
-  detail?: string;
-};
-
 const WELCOME_MESSAGE: GeminiChatMessage = {
   role: "assistant",
   text: "안녕하십니까. RMS 타이타닉의 스미스 선장입니다. 승객 명단, 생존, 침몰과 관련된 질문만 받겠습니다.",
-  ts: new Date().toISOString(),
+  ts: "",
 };
 
 export default function SmithCaptainChatPage() {
-  const apiBaseUrl = getApiBaseUrl();
+  const apiBaseUrl = getTitanicApiBaseUrl();
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<SmithProfile | null>(null);
-  const historyRef = useRef<ChatTurn[]>([]);
 
   useEffect(() => {
     const token = sessionStorage.getItem("access_token");
@@ -74,37 +65,6 @@ export default function SmithCaptainChatPage() {
     sessionStorage.removeItem("user_id");
     setAuthUser(null);
   };
-
-  const handleSendMessage = useCallback(
-    async (text: string): Promise<GeminiChatMessage> => {
-      const res = await fetch(`${apiBaseUrl}/titanic/smith/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          history: historyRef.current,
-        }),
-      });
-
-      const data = (await res.json().catch(() => ({}))) as SmithChatResponse;
-      if (!res.ok) {
-        throw new Error(data.detail ?? `요청 실패 (${res.status})`);
-      }
-
-      historyRef.current = [
-        ...historyRef.current,
-        { role: "user", text },
-        { role: "assistant", text: data.reply },
-      ];
-
-      return {
-        role: "assistant",
-        text: data.reply,
-        ts: new Date().toISOString(),
-      };
-    },
-    [apiBaseUrl]
-  );
 
   return (
     <main className="min-h-dvh bg-white text-gray-900">
@@ -187,9 +147,8 @@ export default function SmithCaptainChatPage() {
           emptyTitle="스미스 선장과 대화를 시작하세요"
           emptySubtitle="승객, 침몰, 생존 등 타이타닉 관련 질문만 받습니다."
           initialMessages={[WELCOME_MESSAGE]}
-          onSendMessage={handleSendMessage}
         />
       </div>
     </main>
   );
-}
+} 

@@ -34,7 +34,7 @@ export default function RootLayout({
         <ClearAdminSessionOutsideAdmin />
         <UserWarningNotifier />
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.VERCEL === '1' && <Analytics />}
       </body>
     </html>
   )

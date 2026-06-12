@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Menu } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/api-base";
+import { getTitanicApiBaseUrl } from "@/lib/api-base";
 import { TitanicNav } from "@/components/titanic-nav";
 import {
   Sheet,
@@ -94,7 +94,7 @@ export default function WalterPassengersPage() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await fetch(`${getApiBaseUrl()}/titanic/walter/myself`);
+      const res = await fetch(`${getTitanicApiBaseUrl()}/titanic/walter/myself`);
       const data = (await res.json().catch(() => ({}))) as WalterProfile & { detail?: string };
       if (!res.ok) {
         setProfile(null);
@@ -113,7 +113,7 @@ export default function WalterPassengersPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${getApiBaseUrl()}/titanic/walter/passengers?page=${targetPage}&page_size=${PAGE_SIZE}`
+        `${getTitanicApiBaseUrl()}/titanic/walter/passengers?page=${targetPage}&page_size=${PAGE_SIZE}`
       );
       const data = (await res.json().catch(() => ({}))) as PaginatedResponse & { detail?: string };
       if (!res.ok) {
@@ -255,7 +255,7 @@ export default function WalterPassengersPage() {
             <div>
               <h2 className="text-base font-semibold text-gray-800">월터가 조회한 Passenger 명단</h2>
               <p className="mt-1 text-xs text-gray-500">
-                API: <code>/titanic/walter/passengers</code>
+                API: <code>/api/titanic/walter/passengers</code>
               </p>
             </div>
             <button
