@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, KeyboardEvent, FormEvent } from "react";
+import { useState, useRef, useEffect, useCallback, ChangeEvent, KeyboardEvent, FormEvent } from "react";
 import {
   ChevronDown,
   Loader2,
@@ -12,6 +12,7 @@ import {
 
 import { getTitanicApiBaseUrl } from "@/lib/api-base";
 import { formatMessageTime } from "@/lib/chat-sessions";
+import { type PdfBlobUploadResult, uploadPdfToBlob } from "@/lib/pdf-blob-api";
 
 export interface GeminiChatMessage {
   role: "user" | "assistant";
@@ -139,9 +140,12 @@ export function GeminiChatPanel({
   const [messages, setMessages] = useState<GeminiChatMessage[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachment, setAttachment] = useState<PdfBlobUploadResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const sentInitialRef = useRef<{ resetKey: string | number | undefined; prompt: string } | null>(null);
 
   const scrollToBottom = () => {
@@ -167,6 +171,7 @@ export function GeminiChatPanel({
     setMessages(initialMessages ?? []);
     setErrorMessage(null);
     setInput("");
+    setAttachment(null);
     sentInitialRef.current = null;
   }, [resetKey, initialMessages]);
 
@@ -178,6 +183,27 @@ export function GeminiChatPanel({
     if (prevResetKeyRef.current !== resetKey) return;
     setMessages(initialMessages ?? []);
   }, [messagesEpoch, initialMessages, resetKey]);
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    setErrorMessage(null);
+    try {
+      const result = await uploadPdfToBlob(file);
+      setAttachment(result);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "PDF 첨부에 실패했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const sendQuestion = useCallback(async (question: string) => {
     const trimmed = question.trim();
@@ -337,7 +363,43 @@ export function GeminiChatPanel({
       </div>
 
       <form onSubmit={handleSubmit} className="w-full shrink-0 pr-1">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            void handleFileChange(e);
+          }}
+        />
         <div className="rounded-[1.75rem] border border-gray-200/95 bg-[#f4f6f8] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-gray-700 dark:bg-gray-900/95 dark:shadow-none overflow-hidden">
+          {attachment && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-gray-200/90 px-4 py-2 text-xs dark:border-gray-700/90">
+              <a
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex max-w-full items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 font-medium text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-200"
+              >
+                PDF: {attachment.filename}
+              </a>
+              <a
+                href={attachment.contentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                본문 텍스트
+              </a>
+              <button
+                type="button"
+                onClick={() => setAttachment(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                제거
+              </button>
+            </div>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -351,11 +413,17 @@ export function GeminiChatPanel({
             <div className="flex items-center gap-0.5 text-gray-600 dark:text-gray-400">
               <button
                 type="button"
-                className="rounded-full p-2.5 hover:bg-gray-200/70 dark:hover:bg-gray-800 transition-colors"
-                aria-label="첨부"
-                title="첨부 (준비 중)"
+                onClick={handleAttachClick}
+                disabled={isUploading}
+                className="rounded-full p-2.5 hover:bg-gray-200/70 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                aria-label="PDF 첨부"
+                title="PDF 첨부 (Blob 저장)"
               >
-                <Plus className="h-5 w-5" strokeWidth={1.75} />
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" strokeWidth={1.75} />
+                ) : (
+                  <Plus className="h-5 w-5" strokeWidth={1.75} />
+                )}
               </button>
               <button
                 type="button"

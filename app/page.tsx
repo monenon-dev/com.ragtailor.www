@@ -124,7 +124,7 @@ export default function MonenonAiApp() {
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
               <Link
-                href="/titanic-home"
+                href="/lesson"
                 className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors"
               >
                 수업중
